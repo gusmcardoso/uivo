@@ -1,0 +1,117 @@
+<div align="center">
+
+# Uptrue
+
+**Seu site está no ar de verdade?**
+
+Monitor de saúde de sites, self-hosted e open source: disponibilidade, certificado SSL e vencimento de domínio (inclusive `.com.br` no Registro.br), com alertas no Telegram.
+
+[![CI/CD](https://github.com/gusmcardoso/uptrue/actions/workflows/ci.yml/badge.svg)](https://github.com/gusmcardoso/uptrue/actions/workflows/ci.yml)
+[![Licença: AGPL-3.0](https://img.shields.io/badge/licen%C3%A7a-AGPL--3.0-10b981)](LICENSE)
+![Node 24](https://img.shields.io/badge/node-24-339933?logo=node.js&logoColor=white)
+![Docker amd64 | arm64](https://img.shields.io/badge/docker-amd64%20%7C%20arm64-2496ED?logo=docker&logoColor=white)
+
+[Português](#português) · [English](#english)
+
+</div>
+
+![Painel do Uptrue](docs/painel.webp)
+
+---
+
+## Português
+
+### Por que mais um monitor?
+
+Monitores tradicionais perguntam só *"o servidor respondeu?"*. O problema de quem mantém sites de clientes costuma ser outro: o site responde 200, mas a página está em branco, o SSL vence semana que vem ou o domínio expira sem ninguém perceber. O Uptrue nasce para responder **"o site está funcionando de verdade?"**, e a v0.1 é a base disso.
+
+### O que a v0.1 faz
+
+| Recurso | Detalhe |
+| --- | --- |
+| Checagem HTTP | Status, tempo de resposta e redirecionamentos, de 30 s a 1 h por site |
+| Palavra-chave | Opcional: só conta como no ar se o texto aparecer na página (pega página em branco com 200) |
+| Confirmação de queda | Só declara "fora do ar" após 2 falhas seguidas, sem alarme falso |
+| Certificado SSL | Dias até vencer, emissor e validade da cadeia; avisos com 14 e 3 dias |
+| Vencimento de domínio | Via RDAP no servidor oficial de cada extensão (`.br` direto no Registro.br); avisos com 30 e 7 dias |
+| Incidentes | Início, fim e duração de cada queda, com histórico de 90 dias |
+| Painel | Uptime de 24 h, 7 e 30 dias, gráfico de tempo de resposta e vencimentos |
+| Alertas | Telegram: queda, volta (com duração) e vencimentos, sem repetir aviso |
+
+### Rodando com Docker
+
+```bash
+curl -O https://raw.githubusercontent.com/gusmcardoso/uptrue/main/compose.yml
+curl -o .env https://raw.githubusercontent.com/gusmcardoso/uptrue/main/.env.example
+# edite o .env: AUTH_SECRET (obrigatório) e, se quiser alertas, o Telegram
+docker compose up -d
+```
+
+Abra `http://localhost:3000` e crie a conta de administrador no primeiro acesso. A imagem é publicada para **amd64 e arm64**, então roda também em Raspberry Pi e nas VMs ARM gratuitas da Oracle Cloud.
+
+| Variável | Obrigatória | Descrição |
+| --- | --- | --- |
+| `AUTH_SECRET` | sim | Assina o cookie de sessão (mín. 16 caracteres) |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | não | Alertas no Telegram (sem eles, os alertas vão para o log) |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | não | Cria o admin na subida, em vez do cadastro pelo painel |
+| `RETENTION_DAYS` | não | Dias de histórico de checagens (padrão 90) |
+| `CHECK_CONCURRENCY` | não | Checagens simultâneas (padrão 10) |
+
+### Desenvolvimento
+
+```bash
+npm install
+npm run dev        # API + agendador em http://localhost:3000
+npm run dev:web    # painel com hot reload em http://localhost:5173
+npm test           # testes (node:test)
+npm run lint && npm run typecheck
+```
+
+### Arquitetura
+
+| Parte | Tecnologia |
+| --- | --- |
+| API, agendador e checagens | Node 24 + TypeScript (executado direto, sem build) + Fastify |
+| Banco | SQLite nativo do Node (`node:sqlite`): um arquivo, nenhuma dependência compilada |
+| Painel | React 19 + Vite + Tailwind 4, gráficos com uPlot |
+| Qualidade | Biome, `tsc`, `node:test` |
+| Entrega | Docker multi-stage sem root, GitHub Actions, imagem multi-arquitetura no GHCR, Dependabot |
+
+**Pipeline** (a cada push e pull request): lint, tipos, testes e build; depois sobe a imagem com `docker compose` e faz um teste de ponta a ponta (painel, API protegida, cadastro, o Uptrue monitorando a si mesmo, container sem root); na `main` e em tags `v*`, publica a imagem `amd64` + `arm64` no GHCR.
+
+### Roadmap
+
+- [x] **v0.1**: HTTP, SSL, domínio, incidentes, painel, alertas no Telegram
+- [ ] **v0.2**: página de status pública, `/metrics` para Prometheus/Grafana, alerta no WhatsApp (opcional)
+- [ ] **v0.3**: regressão visual (print diário comparado com o anterior)
+- [ ] **v0.4**: teste sintético (botão do WhatsApp, formulário) e nota de saúde de 0 a 100
+- [ ] **v0.5**: relatório mensal em PDF para o cliente
+- [ ] Painel em inglês
+
+---
+
+## English
+
+**Is your site *really* up?** Uptrue is a self-hosted, open-source site health monitor. Beyond plain uptime, it tracks SSL certificate expiry and domain expiry through RDAP (using each TLD's official server, including Brazil's Registro.br), and sends Telegram alerts on downtime, recovery and upcoming expirations.
+
+- **Quick start:** grab `compose.yml` and `.env.example`, set `AUTH_SECRET`, run `docker compose up -d`, then open `http://localhost:3000` and create the admin account.
+- **Images:** multi-arch (`amd64`, `arm64`) on `ghcr.io/gusmcardoso/uptrue`.
+- **Stack:** Node 24 + TypeScript + Fastify, built-in `node:sqlite`, React + Vite + Tailwind.
+- **Status:** v0.1. The UI is in Brazilian Portuguese for now; English UI is on the roadmap. Contributions are welcome.
+
+Licensed under **AGPL-3.0**: free to use, modify and self-host; if you offer a modified version as a network service, you must publish its source.
+
+<br>
+
+---
+
+<div align="center">
+
+Desenvolvido por **Gustavo Martins** · Analista de Sistemas · Fullstack & DevOps
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat-square&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/gustavomartinsc)
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/gusmcardoso)
+
+<sub>Código aberto sob a licença AGPL-3.0.</sub>
+
+</div>

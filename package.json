@@ -1,0 +1,41 @@
+{
+  "name": "uptrue",
+  "version": "0.1.0",
+  "description": "Monitor de saúde de sites: disponibilidade, SSL e vencimento de domínio, com alertas no Telegram.",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "node --watch --env-file-if-exists=.env src/server/index.ts",
+    "dev:web": "vite",
+    "build": "vite build",
+    "start": "node src/server/index.ts",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "format": "biome check --write ."
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.5",
+    "@fastify/rate-limit": "^11.3.0",
+    "@fastify/static": "^10.1.12",
+    "fastify": "^5.12.8"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.8",
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^7.0.2",
+    "uplot": "^1.6.32",
+    "vite": "^8.3.8"
+  }
+}
