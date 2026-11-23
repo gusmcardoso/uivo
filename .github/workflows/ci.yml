@@ -62,7 +62,9 @@ jobs:
           set -euxo pipefail
           B=http://127.0.0.1:3000
           # painel servido
-          curl -fsS $B/ | grep -q '<div id="root">'
+          # (saída guardada antes do grep: com pipefail, grep -q fechando o cano cedo derruba o comando anterior)
+          page=$(curl -fsS $B/)
+          grep -q '<div id="root">' <<< "$page"
           # API protegida
           test "$(curl -s -o /dev/null -w '%{http_code}' $B/api/sites)" = "401"
           # primeiro acesso cria o admin e abre sessão
@@ -79,12 +81,15 @@ jobs:
           curl -fsS $B/api/public/status | jq -e '.sites[0].name == "Uptrue"'
           # /metrics exige token e exporta no formato Prometheus
           test "$(curl -s -o /dev/null -w '%{http_code}' $B/metrics)" = "401"
-          curl -fsS -H "Authorization: Bearer $METRICS_TOKEN" $B/metrics | grep -q 'uptrue_site_up{site="Uptrue"'
+          metrics=$(curl -fsS -H "Authorization: Bearer $METRICS_TOKEN" $B/metrics)
+          grep -q 'uptrue_site_up{site="Uptrue"' <<< "$metrics"
           # auditoria de segurança roda e devolve nota de 0 a 100
           curl -fsS -b jar -X POST -H 'content-type: application/json' -d '{}' $B/api/sites/$id/security | jq -e '.score >= 0 and .score <= 100'
-          curl -fsS -H "Authorization: Bearer $METRICS_TOKEN" $B/metrics | grep -q 'uptrue_security_score{site="Uptrue"'
+          metrics=$(curl -fsS -H "Authorization: Bearer $METRICS_TOKEN" $B/metrics)
+          grep -q 'uptrue_security_score{site="Uptrue"' <<< "$metrics"
           # eventos estruturados em JSON no log (prontos para o Loki)
-          docker compose logs uptrue | grep -q '"event":"security.finding"'
+          logs=$(docker compose logs --no-color uptrue)
+          grep -q '"event":"security.finding"' <<< "$logs"
           # tempo por etapa: a checagem grava DNS/conexão/espera/download e a API devolve percentis
           curl -fsS -b jar "$B/api/sites/$id/timing?range=24h" | jq -e '.samples >= 1 and .p50 != null and .last.timings.wait >= 0'
           # container sem root
