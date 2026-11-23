@@ -37,5 +37,5 @@ Padrão [Conventional Commits](https://www.conventionalcommits.org/pt-br/), em p
 ```bash
 npm run lint && npm run typecheck && npm test && npm run build
 bash scripts/test-observability.sh   # se mexer no perfil de observabilidade
-docker run --rm -v "$PWD/scripts:/scripts:ro" koalaman/shellcheck:v0.10.0 --severity=warning /scripts/*.sh   # se mexer em scripts
+docker run --rm -v "$PWD:/mnt:ro" -w /mnt koalaman/shellcheck:v0.10.0 --severity=warning scripts/*.sh   # se mexer em scripts
 ```
