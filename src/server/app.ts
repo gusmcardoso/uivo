@@ -14,6 +14,7 @@ import {
   verifyPassword,
 } from './auth.ts';
 import { getSite } from './db.ts';
+import { registerPublicRoutes } from './public.ts';
 import { DAY, HOUR } from './util.ts';
 
 export interface AppOptions {
@@ -21,6 +22,8 @@ export interface AppOptions {
   authSecret: string;
   runNow: (siteId: number) => Promise<void>;
   webDir?: string;
+  metricsToken?: string;
+  statusTitle?: string;
   logger?: boolean;
 }
 
@@ -44,6 +47,7 @@ const siteBody = {
     keyword: { type: ['string', 'null'], maxLength: 200 },
     enabled: { type: 'boolean' },
     check_domain: { type: 'boolean' },
+    public: { type: 'boolean' },
   },
 } as const;
 
@@ -64,6 +68,7 @@ interface SiteInput {
   keyword?: string | null;
   enabled?: boolean;
   check_domain?: boolean;
+  public?: boolean;
 }
 
 export async function buildApp(options: AppOptions) {
@@ -177,8 +182,8 @@ export async function buildApp(options: AppOptions) {
       const b = req.body;
       const result = db
         .prepare(
-          `INSERT INTO sites (name, url, interval_sec, keyword, enabled, check_domain, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO sites (name, url, interval_sec, keyword, enabled, check_domain, public, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           b.name ?? '',
@@ -187,6 +192,7 @@ export async function buildApp(options: AppOptions) {
           b.keyword || null,
           b.enabled === false ? 0 : 1,
           b.check_domain === false ? 0 : 1,
+          b.public ? 1 : 0,
           Date.now(),
         );
       const id = Number(result.lastInsertRowid);
@@ -204,7 +210,7 @@ export async function buildApp(options: AppOptions) {
       const b = req.body;
       const urlChanged = b.url !== undefined && b.url !== site.url;
       db.prepare(
-        `UPDATE sites SET name = ?, url = ?, interval_sec = ?, keyword = ?, enabled = ?, check_domain = ?
+        `UPDATE sites SET name = ?, url = ?, interval_sec = ?, keyword = ?, enabled = ?, check_domain = ?, public = ?
          ${urlChanged ? ', ssl_checked_at = NULL, domain_checked_at = NULL' : ''} WHERE id = ?`,
       ).run(
         b.name ?? site.name,
@@ -213,6 +219,7 @@ export async function buildApp(options: AppOptions) {
         b.keyword === undefined ? site.keyword : b.keyword || null,
         b.enabled === undefined ? site.enabled : Number(b.enabled),
         b.check_domain === undefined ? site.check_domain : Number(b.check_domain),
+        b.public === undefined ? site.public : Number(b.public),
         site.id,
       );
       if (urlChanged) void options.runNow(site.id);
@@ -249,7 +256,7 @@ export async function buildApp(options: AppOptions) {
       const bucket = Math.max(60_000, Math.ceil(span / MAX_POINTS));
       return db
         .prepare(
-          `SELECT (at / ?) * ? AS t, ROUND(AVG(response_ms)) AS ms, MIN(ok) AS ok, COUNT(*) AS n
+          `SELECT (at / CAST(? AS INTEGER)) * CAST(? AS INTEGER) AS t, ROUND(AVG(response_ms)) AS ms, MIN(ok) AS ok, COUNT(*) AS n
            FROM checks WHERE site_id = ? AND at >= ? GROUP BY 1 ORDER BY 1`,
         )
         .all(bucket, bucket, Number(req.params.id), Date.now() - span);
@@ -263,6 +270,8 @@ export async function buildApp(options: AppOptions) {
       )
       .all(Number(req.params.id), Date.now() - 90 * DAY),
   );
+
+  registerPublicRoutes(app, db, { metricsToken: options.metricsToken, statusTitle: options.statusTitle });
 
   // ─── Painel (SPA) ─────────────────────────────────────────────────────────
   const webDir = options.webDir;

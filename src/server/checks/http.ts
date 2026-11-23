@@ -10,7 +10,7 @@ export interface HttpOptions {
   timeoutMs?: number;
 }
 
-const USER_AGENT = 'Uptrue/0.1 (+https://github.com/gusmcardoso/uptrue)';
+const USER_AGENT = 'Uptrue/0.2 (+https://github.com/gusmcardoso/uptrue)';
 
 /** Requisição GET seguindo redirecionamentos; opcionalmente exige uma palavra-chave no HTML. */
 export async function checkHttp(url: string, options: HttpOptions = {}): Promise<HttpResult> {

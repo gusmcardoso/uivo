@@ -25,7 +25,7 @@ Monitor de saúde de sites, self-hosted e open source: disponibilidade, certific
 
 Monitores tradicionais perguntam só *"o servidor respondeu?"*. O problema de quem mantém sites de clientes costuma ser outro: o site responde 200, mas a página está em branco, o SSL vence semana que vem ou o domínio expira sem ninguém perceber. O Uptrue nasce para responder **"o site está funcionando de verdade?"**, e a v0.1 é a base disso.
 
-### O que a v0.1 faz
+### O que o Uptrue faz
 
 | Recurso | Detalhe |
 | --- | --- |
@@ -37,6 +37,8 @@ Monitores tradicionais perguntam só *"o servidor respondeu?"*. O problema de qu
 | Incidentes | Início, fim e duração de cada queda, com histórico de 90 dias |
 | Painel | Uptime de 24 h, 7 e 30 dias, gráfico de tempo de resposta e vencimentos |
 | Alertas | Telegram: queda, volta (com duração) e vencimentos, sem repetir aviso |
+| Página de status pública | `/status`, só com os sites marcados como públicos: estado atual e barras de 90 dias (novo na v0.2) |
+| Métricas Prometheus | `/metrics` protegido por token, pronto para o Grafana (novo na v0.2) |
 
 ### Rodando com Docker
 
@@ -56,6 +58,30 @@ Abra `http://localhost:3000` e crie a conta de administrador no primeiro acesso.
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | não | Cria o admin na subida, em vez do cadastro pelo painel |
 | `RETENTION_DAYS` | não | Dias de histórico de checagens (padrão 90) |
 | `CHECK_CONCURRENCY` | não | Checagens simultâneas (padrão 10) |
+| `STATUS_PAGE_TITLE` | não | Título da página de status pública (padrão "Status dos serviços") |
+| `METRICS_TOKEN` | não | Habilita o `/metrics` para o Prometheus (sem ele, o endpoint fica desligado) |
+
+### Página de status pública
+
+Marque um site como **público** no painel e ele aparece em `http://seu-servidor:3000/status`, sem login: estado atual, uptime e barras dos últimos 90 dias. Só o nome e o domínio são expostos. Dá para colocar no rodapé do site do cliente ou no seu portfólio.
+
+![Página de status](docs/status.webp)
+
+### Prometheus e Grafana
+
+Com `METRICS_TOKEN` definido, o `/metrics` exporta `uptrue_site_up`, `uptrue_site_response_seconds`, `uptrue_site_uptime_ratio` (24 h, 7 e 30 dias) e os vencimentos de SSL e domínio. Exemplo de `prometheus.yml`:
+
+```yaml
+scrape_configs:
+  - job_name: uptrue
+    scrape_interval: 60s
+    authorization:
+      credentials: "<METRICS_TOKEN>"
+    static_configs:
+      - targets: ["uptrue:3000"]
+```
+
+Alerta de SSL perto de vencer (`expr`): `uptrue_ssl_expiry_timestamp_seconds - time() < 14 * 86400`.
 
 ### Desenvolvimento
 
@@ -77,12 +103,14 @@ npm run lint && npm run typecheck
 | Qualidade | Biome, `tsc`, `node:test` |
 | Entrega | Docker multi-stage sem root, GitHub Actions, imagem multi-arquitetura no GHCR, Dependabot |
 
-**Pipeline** (a cada push e pull request): lint, tipos, testes e build; depois sobe a imagem com `docker compose` e faz um teste de ponta a ponta (painel, API protegida, cadastro, o Uptrue monitorando a si mesmo, container sem root); na `main` e em tags `v*`, publica a imagem `amd64` + `arm64` no GHCR.
+**Pipeline** (a cada push e pull request): lint, tipos, testes e build; depois sobe a imagem com `docker compose` e faz um teste de ponta a ponta (painel, API protegida, cadastro, o Uptrue monitorando a si mesmo, página de status, `/metrics` com token, container sem root); na `main` e em tags `v*`, publica a imagem `amd64` + `arm64` no GHCR.
 
 ### Roadmap
 
 - [x] **v0.1**: HTTP, SSL, domínio, incidentes, painel, alertas no Telegram
-- [ ] **v0.2**: página de status pública, `/metrics` para Prometheus/Grafana, alerta no WhatsApp (opcional)
+- [x] **v0.2**: página de status pública e `/metrics` para Prometheus/Grafana
+- [ ] Descoberta automática de sites pelo Traefik e por labels do Docker
+- [ ] Alerta no WhatsApp (opcional)
 - [ ] **v0.3**: regressão visual (print diário comparado com o anterior)
 - [ ] **v0.4**: teste sintético (botão do WhatsApp, formulário) e nota de saúde de 0 a 100
 - [ ] **v0.5**: relatório mensal em PDF para o cliente
@@ -97,7 +125,7 @@ npm run lint && npm run typecheck
 - **Quick start:** grab `compose.yml` and `.env.example`, set `AUTH_SECRET`, run `docker compose up -d`, then open `http://localhost:3000` and create the admin account.
 - **Images:** multi-arch (`amd64`, `arm64`) on `ghcr.io/gusmcardoso/uptrue`.
 - **Stack:** Node 24 + TypeScript + Fastify, built-in `node:sqlite`, React + Vite + Tailwind.
-- **Status:** v0.1. The UI is in Brazilian Portuguese for now; English UI is on the roadmap. Contributions are welcome.
+- **Status:** v0.2: public status page at `/status` and a token-protected Prometheus endpoint at `/metrics`. The UI is in Brazilian Portuguese for now; English UI is on the roadmap. Contributions are welcome.
 
 Licensed under **AGPL-3.0**: free to use, modify and self-host; if you offer a modified version as a network service, you must publish its source.
 

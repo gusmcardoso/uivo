@@ -28,6 +28,8 @@ const app = await buildApp({
   authSecret: config.authSecret,
   runNow: (id) => runNow(id),
   webDir: path.join(root, 'dist', 'web'),
+  metricsToken: config.metricsToken,
+  statusTitle: config.statusTitle,
   logger: true,
 });
 

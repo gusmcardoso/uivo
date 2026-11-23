@@ -8,6 +8,7 @@ export interface Site {
   keyword: string | null;
   enabled: number;
   check_domain: number;
+  public: number;
   status: Status;
   last_checked_at: number | null;
   last_error: string | null;
@@ -29,6 +30,7 @@ export interface SitePayload {
   keyword: string | null;
   enabled: boolean;
   check_domain: boolean;
+  public: boolean;
 }
 
 export interface CheckPoint {
@@ -43,6 +45,21 @@ export interface Incident {
   started_at: number;
   ended_at: number | null;
   reason: string | null;
+}
+
+export interface PublicStatus {
+  title: string;
+  updatedAt: number;
+  days: number;
+  sites: {
+    id: number;
+    name: string;
+    host: string;
+    status: Status;
+    uptime: number | null;
+    downSince: number | null;
+    history: (number | null)[];
+  }[];
 }
 
 export class ApiError extends Error {
@@ -77,5 +94,6 @@ export const api = {
   checkNow: (id: number) => request<Site>('POST', `/api/sites/${id}/check`, {}),
   checks: (id: number, range: string) =>
     request<CheckPoint[]>('GET', `/api/sites/${id}/checks?range=${range}`),
+  publicStatus: () => request<PublicStatus>('GET', '/api/public/status'),
   incidents: (id: number) => request<Incident[]>('GET', `/api/sites/${id}/incidents`),
 };

@@ -25,6 +25,7 @@ export function SiteForm({
     keyword: site?.keyword ?? '',
     enabled: site ? Boolean(site.enabled) : true,
     check_domain: site ? Boolean(site.check_domain) : true,
+    public: site ? Boolean(site.public) : false,
   });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -128,6 +129,15 @@ export function SiteForm({
             onChange={(e) => set('check_domain', e.target.checked)}
           />
           Avisar vencimento do domínio
+        </label>
+        <label className="flex items-center gap-2 text-sm text-zinc-300">
+          <input
+            type="checkbox"
+            className="accent-emerald-500"
+            checked={form.public}
+            onChange={(e) => set('public', e.target.checked)}
+          />
+          Mostrar na página de status pública
         </label>
         <label className="flex items-center gap-2 text-sm text-zinc-300">
           <input

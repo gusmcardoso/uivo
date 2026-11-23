@@ -4,12 +4,18 @@ import { Login } from './components/Login.tsx';
 import { Logo } from './components/Logo.tsx';
 import { SiteDetail } from './components/SiteDetail.tsx';
 import { SiteForm } from './components/SiteForm.tsx';
+import { StatusPage } from './components/StatusPage.tsx';
 import { daysUntil, expiryTone, formatUptime, hostOf, relativeTime } from './format.ts';
 
 type Session = 'loading' | 'setup' | 'login' | 'in';
 const REFRESH_MS = 30_000;
 
 export function App() {
+  if (window.location.pathname.replace(/\/+$/, '') === '/status') return <StatusPage />;
+  return <Admin />;
+}
+
+function Admin() {
   const [session, setSession] = useState<Session>('loading');
 
   const loadSession = useCallback(async () => {
@@ -80,6 +86,9 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           <button type="button" className="btn-primary" onClick={() => setEditing('new')}>
             + Adicionar site
           </button>
+          <a className="btn-ghost" href="/status" target="_blank" rel="noopener">
+            Página de status
+          </a>
           <button type="button" className="btn-ghost" onClick={logout}>
             Sair
           </button>

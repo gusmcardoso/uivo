@@ -12,6 +12,7 @@ export interface Site {
   keyword: string | null;
   enabled: number;
   check_domain: number;
+  public: number;
   status: SiteStatus;
   fail_streak: number;
   last_checked_at: number | null;
@@ -86,9 +87,18 @@ export function openDb(file: string): DatabaseSync {
   const db = new DatabaseSync(file);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
   db.exec(SCHEMA);
+  migrate(db);
   return db;
 }
 
 export function getSite(db: DatabaseSync, id: number): Site | undefined {
   return db.prepare('SELECT * FROM sites WHERE id = ?').get(id) as unknown as Site | undefined;
+}
+
+/** Migrações incrementais: colunas novas em bancos de versões anteriores. */
+function migrate(db: DatabaseSync): void {
+  const columns = new Set(
+    (db.prepare('PRAGMA table_info(sites)').all() as { name: string }[]).map((c) => c.name),
+  );
+  if (!columns.has('public')) db.exec('ALTER TABLE sites ADD COLUMN public INTEGER NOT NULL DEFAULT 0');
 }

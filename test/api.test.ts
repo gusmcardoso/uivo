@@ -6,11 +6,13 @@ import { openDb } from '../src/server/db.ts';
 type App = Awaited<ReturnType<typeof buildApp>>;
 let app: App;
 let checked: number[];
+let db: ReturnType<typeof openDb>;
 
 beforeEach(async () => {
   checked = [];
+  db = openDb(':memory:');
   app = await buildApp({
-    db: openDb(':memory:'),
+    db,
     authSecret: 'segredo-de-teste-com-tamanho-ok',
     runNow: async (id) => void checked.push(id),
   });
@@ -121,5 +123,32 @@ describe('API', () => {
     const res = await app.inject('/healthz');
     assert.equal(res.headers['x-frame-options'], 'DENY');
     assert.match(String(res.headers['content-security-policy']), /default-src 'self'/);
+  });
+});
+
+describe('gráfico', () => {
+  it('agrupa as checagens em faixas de tempo (divisão inteira)', async () => {
+    const cookie = await setup();
+    const id = Number(
+      db.prepare("INSERT INTO sites (name, url, created_at) VALUES ('Loja', 'https://loja.com.br', 0)").run()
+        .lastInsertRowid,
+    );
+    const bucket = Math.ceil((30 * 86_400_000) / 300); // faixa do período de 30 dias
+    const start = Math.floor(Date.now() / bucket) * bucket - 10 * bucket;
+    const insert = db.prepare('INSERT INTO checks (site_id, at, ok, response_ms) VALUES (?, ?, 1, ?)');
+    insert.run(id, start + 1_000, 100);
+    insert.run(id, start + 2_000, 300); // mesma faixa da anterior
+    insert.run(id, start + bucket + 1_000, 200); // faixa seguinte
+    const points = (
+      await app.inject({ url: `/api/sites/${id}/checks?range=30d`, headers: { cookie } })
+    ).json();
+    assert.equal(points.length, 2);
+    assert.deepEqual(
+      points.map((p: { ms: number; n: number }) => [p.ms, p.n]),
+      [
+        [200, 2],
+        [200, 1],
+      ],
+    );
   });
 });

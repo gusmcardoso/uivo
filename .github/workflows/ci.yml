@@ -42,6 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AUTH_SECRET: ci-secret-only-for-tests-0123456789
+      METRICS_TOKEN: ci-metrics-token-0123456789
     steps:
       - uses: actions/checkout@v4
 
@@ -73,6 +74,12 @@ jobs:
             $B/api/sites | jq -r .id)
           status=$(curl -fsS -b jar -X POST -H 'content-type: application/json' -d '{}' $B/api/sites/$id/check | jq -r .status)
           test "$status" = "up"
+          # página de status pública: o site marcado como público aparece, sem login
+          curl -fsS -b jar -X PATCH -H 'content-type: application/json' -d '{"public":true}' $B/api/sites/$id > /dev/null
+          curl -fsS $B/api/public/status | jq -e '.sites[0].name == "Uptrue"'
+          # /metrics exige token e exporta no formato Prometheus
+          test "$(curl -s -o /dev/null -w '%{http_code}' $B/metrics)" = "401"
+          curl -fsS -H "Authorization: Bearer $METRICS_TOKEN" $B/metrics | grep -q 'uptrue_site_up{site="Uptrue"'
           # container sem root
           test "$(docker compose exec -T uptrue id -u)" != "0"
 

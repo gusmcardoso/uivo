@@ -23,6 +23,8 @@ export const config = {
   telegramChatId: process.env.TELEGRAM_CHAT_ID,
   retentionDays: num(process.env.RETENTION_DAYS, 90),
   concurrency: num(process.env.CHECK_CONCURRENCY, 10),
+  metricsToken: process.env.METRICS_TOKEN || undefined,
+  statusTitle: process.env.STATUS_PAGE_TITLE || 'Status dos serviços',
 };
 
 export type Config = typeof config;
