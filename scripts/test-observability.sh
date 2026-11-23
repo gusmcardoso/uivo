@@ -9,7 +9,7 @@
 # No Docker Desktop via WSL o cAdvisor não enxerga os containers (os caminhos montados vêm da
 # distro, não da VM do Docker); use ALLOW_EMPTY_CONTAINERS=1 para tratar isso como aviso.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-uptrue-obs-test}"
 export AUTH_SECRET="${AUTH_SECRET:-obs-test-secret-0123456789abcdef}"

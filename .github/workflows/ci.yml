@@ -32,6 +32,8 @@ jobs:
         run: npm run typecheck
       - name: Testes
         run: npm test
+      - name: ShellCheck (scripts)
+        run: docker run --rm -v "$PWD/scripts:/scripts:ro" koalaman/shellcheck:v0.10.0 --severity=warning /scripts/observability.sh /scripts/test-observability.sh
       - name: Build do painel
         run: npm run build
 

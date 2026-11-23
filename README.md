@@ -101,9 +101,13 @@ Achados graves **novos** vão para o Telegram; o mesmo achado não é repetido n
 Um comando sobe a pilha inteira, já configurada, com dashboards prontos:
 
 ```bash
-# no .env: METRICS_TOKEN e GRAFANA_ADMIN_PASSWORD
-docker compose --profile observability up -d    # Grafana em http://localhost:3001
+scripts/observability.sh init     # gera no .env só os segredos que faltam (nunca sobrescreve)
+scripts/observability.sh up       # confere o ambiente, sobe e espera o Grafana (http://localhost:3001)
+scripts/observability.sh status   # containers e saúde de cada alvo do Prometheus
+scripts/observability.sh down     # para só a observabilidade; o Uptrue continua e os dados ficam
 ```
+
+O `up` confere antes de subir (segredos definidos e fortes, Docker respondendo, Compose 2.23+, porta do Grafana livre) e diz em português o que falta, em vez de deixar o compose falhar no meio. Sem o script, o equivalente é `docker compose --profile observability up -d` com `METRICS_TOKEN` e `GRAFANA_ADMIN_PASSWORD` no `.env`.
 
 | Serviço | Papel |
 | --- | --- |
@@ -178,6 +182,7 @@ npm run lint && npm run typecheck
 - [x] **v0.1.1**: página de status pública e `/metrics` para Prometheus/Grafana
 - [x] **v0.1.2**: auditoria de segurança, detecção de adulteração, nota de saúde e eventos para o Loki
 - [x] **v0.1.3**: tempo por etapa (DNS, conexão, TLS, servidor, download), percentis e diagnóstico
+- [x] **v0.1.6**: `scripts/observability.sh` (check, init, up, status, down, logs) com testes e ShellCheck no CI
 - [x] **v0.1.5**: sites atrás de firewall: detecção de desafio anti-bot, verificação em camadas e cabeçalhos de liberação
 - [x] **v0.1.4**: perfil de observabilidade (Prometheus, Grafana, Loki, Alloy, node_exporter, cAdvisor) com dashboards prontos e testados no CI
 - [ ] Descoberta automática de sites pelo Traefik e por labels do Docker
