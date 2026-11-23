@@ -27,12 +27,11 @@ js() { node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{const d=
 fail() { echo "FALHA $1"; FAILS=$((FAILS + 1)); [ -n "${GITHUB_ACTIONS:-}" ] && echo "::error title=Observabilidade::$1"; return 0; }
 ok() { if [ "$2" = "true" ]; then echo "OK    $1"; else fail "$1 → ${2:-sem resposta}"; fi; }
 # Porta não publicada: o "docker port" do Engine falha (formato estável). O "docker compose port"
-# muda de formato entre versões (":0", vazio…); fica só registrado para diagnóstico.
+# muda de formato entre versões (":0" local, "invalid IP:0" no runner do GitHub).
+# Atenção: nada pode ir para a saída padrão aqui, porque o resultado é capturado por $(...).
 unpublished() {
-  local id raw
+  local id
   id=$(docker compose ps -q "$1")
-  raw=$(docker compose port "$1" "$2" 2>&1 | head -1)
-  [ -n "${GITHUB_ACTIONS:-}" ] && echo "::notice title=compose port $1::saída crua: '$raw'"
   [ -n "$id" ] && ! docker port "$id" "$2/tcp" >/dev/null 2>&1
 }
 cleanup() { rm -f "$JAR"; [ -n "${KEEP:-}" ] || docker compose --profile observability down -v >/dev/null 2>&1; }
