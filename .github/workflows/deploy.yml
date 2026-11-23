@@ -1,0 +1,78 @@
+name: Deploy
+
+# Automático: o CI chama este workflow ao publicar uma tag v* (depois de todos os testes).
+# Manual: Actions → Deploy → Run workflow, informando a versão (serve também para voltar versão).
+#
+# Configuração (Settings → Environments → production):
+#   secrets  DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY (chave exclusiva de deploy), DEPLOY_KNOWN_HOSTS
+#   vars     DEPLOY_URL (ex.: https://status.exemplo.com.br)
+# E no repositório (Settings → Variables): DEPLOY_ENABLED=true para ligar o deploy automático.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versão a instalar (ex.: 0.1.7)"
+        required: true
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy em produção
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.DEPLOY_URL }}
+    steps:
+      - name: Validar a versão
+        id: version
+        env:
+          REQUESTED: ${{ inputs.version }}
+        run: |
+          v="${REQUESTED#v}"
+          [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::versão inválida: $REQUESTED"; exit 1; }
+          echo "value=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Executar o update.sh no servidor
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          for v in DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS; do
+            [ -n "${!v}" ] || { echo "::error::segredo $v não configurado no environment production"; exit 1; }
+          done
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # A chave só consegue rodar o deploy-entry.sh (comando forçado no servidor); o "comando" é a versão
+          ssh -i ~/.ssh/deploy -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "$VERSION"
+
+      - name: Conferir o site no ar
+        if: vars.DEPLOY_URL != ''
+        env:
+          URL: ${{ vars.DEPLOY_URL }}
+        run: |
+          for _ in $(seq 1 20); do
+            if curl -fsS "$URL/healthz"; then echo; exit 0; fi
+            sleep 3
+          done
+          echo "::error::$URL/healthz não respondeu depois do deploy"; exit 1
+
+      - name: Apagar a chave do runner
+        if: always()
+        run: rm -f ~/.ssh/deploy

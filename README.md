@@ -154,6 +154,18 @@ scrape_configs:
 
 Alerta de SSL perto de vencer (`expr`): `uptrue_ssl_expiry_timestamp_seconds - time() < 14 * 86400`.
 
+### Produção (servidor com HTTPS e deploy automático)
+
+O guia [docs/DEPLOY.md](docs/DEPLOY.md) cobre do zero: endurecimento do servidor, Docker, Traefik com HTTPS, backup diário testado e deploy automático pelo GitHub Actions.
+
+| Script | Função |
+| --- | --- |
+| `scripts/update.sh [versão]` | backup → nova versão → espera ficar saudável → **rollback automático** se não ficar |
+| `scripts/backup.sh` | cópia consistente do SQLite (`VACUUM INTO`), integridade conferida, compactada, 14 dias |
+| `scripts/deploy-entry.sh` | porta de entrada da chave de deploy: só aceita uma versão como comando |
+
+Cada tag `v*` que passa em todos os testes é publicada e instalada no servidor pelo workflow **Deploy**, que também permite instalar ou voltar uma versão à mão.
+
 ### Desenvolvimento
 
 ```bash
@@ -174,7 +186,7 @@ npm run lint && npm run typecheck
 | Qualidade | Biome, `tsc`, `node:test` |
 | Entrega | Docker multi-stage sem root, GitHub Actions, imagem multi-arquitetura no GHCR, Dependabot |
 
-**Pipeline** (a cada push e pull request): lint, tipos, testes e build; a pilha de observabilidade sobe inteira e cada painel é consultado; depois sobe a imagem com `docker compose` e faz um teste de ponta a ponta (painel, API protegida, cadastro, o Uptrue monitorando a si mesmo, página de status, `/metrics` com token, container sem root); na `main` e em tags `v*`, publica a imagem `amd64` + `arm64` no GHCR.
+**Pipeline** (a cada push e pull request): lint, tipos, testes e build; a pilha de observabilidade sobe inteira e cada painel é consultado; o `update.sh` é testado como num servidor (atualiza, recusa versão inválida, faz rollback); depois sobe a imagem com `docker compose` e faz um teste de ponta a ponta (painel, API protegida, cadastro, o Uptrue monitorando a si mesmo, página de status, `/metrics` com token, container sem root); na `main` e em tags `v*`, publica a imagem `amd64` + `arm64` no GHCR.
 
 ### Roadmap
 
@@ -182,6 +194,7 @@ npm run lint && npm run typecheck
 - [x] **v0.1.1**: página de status pública e `/metrics` para Prometheus/Grafana
 - [x] **v0.1.2**: auditoria de segurança, detecção de adulteração, nota de saúde e eventos para o Loki
 - [x] **v0.1.3**: tempo por etapa (DNS, conexão, TLS, servidor, download), percentis e diagnóstico
+- [x] **v0.1.7**: `update.sh` com backup e rollback automático, `backup.sh` testado, deploy automático por tag com chave restrita (comando forçado) e guia de deploy
 - [x] **v0.1.6**: `scripts/observability.sh` (check, init, up, status, down, logs) com testes e ShellCheck no CI
 - [x] **v0.1.5**: sites atrás de firewall: detecção de desafio anti-bot, verificação em camadas e cabeçalhos de liberação
 - [x] **v0.1.4**: perfil de observabilidade (Prometheus, Grafana, Loki, Alloy, node_exporter, cAdvisor) com dashboards prontos e testados no CI
