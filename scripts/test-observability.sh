@@ -23,13 +23,16 @@ JAR="$(mktemp)"
 FAILS=0
 
 js() { node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{const d=JSON.parse(s);console.log(eval(process.argv[1]))})' "$1"; }
-ok() { if [ "$2" = "true" ]; then echo "OK    $1"; else echo "FALHA $1 → ${2:-sem resposta}"; FAILS=$((FAILS + 1)); fi; }
+# No GitHub Actions, cada falha vira anotação (visível no commit/PR sem abrir o log)
+fail() { echo "FALHA $1"; FAILS=$((FAILS + 1)); [ -n "${GITHUB_ACTIONS:-}" ] && echo "::error title=Observabilidade::$1"; return 0; }
+ok() { if [ "$2" = "true" ]; then echo "OK    $1"; else fail "$1 → ${2:-sem resposta}"; fi; }
 unpublished() { local p; p=$(docker compose port "$1" "$2" 2>/dev/null); [ -z "$p" ] || [ "$p" = ":0" ]; }
 cleanup() { rm -f "$JAR"; [ -n "${KEEP:-}" ] || docker compose --profile observability down -v >/dev/null 2>&1; }
 trap cleanup EXIT
 
 echo "== subindo a pilha (projeto $COMPOSE_PROJECT_NAME)"
-docker compose --profile observability up -d --build >/tmp/obs-up.log 2>&1 || { echo "FALHA ao subir"; tail -20 /tmp/obs-up.log; exit 1; }
+docker compose --profile observability up -d --build >/tmp/obs-up.log 2>&1 || { fail "subida da pilha: $(tail -3 /tmp/obs-up.log | tr '
+' ' ')"; tail -20 /tmp/obs-up.log; exit 1; }
 for _ in $(seq 1 60); do curl -fsS "$B/healthz" >/dev/null 2>&1 && break; sleep 2; done
 curl -fsS -c "$JAR" -H 'content-type: application/json' \
   -d '{"email":"obs@example.com","password":"obs-password-123"}' "$B/api/setup" >/dev/null
@@ -80,8 +83,7 @@ while read -r line; do
   elif [ -n "${ALLOW_EMPTY_CONTAINERS:-}" ] && [[ "$expr" == *container_* ]]; then
     echo "AVISO $label → sem dados (cAdvisor no Docker Desktop/WSL)"
   else
-    echo "FALHA $label → $n  [$expr]"
-    FAILS=$((FAILS + 1))
+    fail "$label → $n  [$expr]"
   fi
 done <<<"$queries"
 
