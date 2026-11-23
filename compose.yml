@@ -1,0 +1,26 @@
+# Uptrue com Docker:
+#   cp .env.example .env    # defina AUTH_SECRET (e o Telegram, se quiser alertas)
+#   docker compose up -d    # http://localhost:3000 → crie a conta no primeiro acesso
+#
+# Usa a imagem publicada no GHCR; para gerar localmente: docker compose up -d --build
+
+services:
+  uptrue:
+    image: ghcr.io/gusmcardoso/uptrue:${UPTRUE_TAG:-latest}
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${UPTRUE_PORT:-3000}:3000"
+    environment:
+      AUTH_SECRET: ${AUTH_SECRET:?defina AUTH_SECRET no .env}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      RETENTION_DAYS: ${RETENTION_DAYS:-90}
+      TZ: ${TZ:-America/Sao_Paulo}
+    volumes:
+      - uptrue-data:/data
+
+volumes:
+  uptrue-data:
