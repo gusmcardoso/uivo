@@ -80,6 +80,11 @@ jobs:
           # /metrics exige token e exporta no formato Prometheus
           test "$(curl -s -o /dev/null -w '%{http_code}' $B/metrics)" = "401"
           curl -fsS -H "Authorization: Bearer $METRICS_TOKEN" $B/metrics | grep -q 'uptrue_site_up{site="Uptrue"'
+          # auditoria de segurança roda e devolve nota de 0 a 100
+          curl -fsS -b jar -X POST -H 'content-type: application/json' -d '{}' $B/api/sites/$id/security | jq -e '.score >= 0 and .score <= 100'
+          curl -fsS -H "Authorization: Bearer $METRICS_TOKEN" $B/metrics | grep -q 'uptrue_security_score{site="Uptrue"'
+          # eventos estruturados em JSON no log (prontos para o Loki)
+          docker compose logs uptrue | grep -q '"event":"security.finding"'
           # container sem root
           test "$(docker compose exec -T uptrue id -u)" != "0"
 

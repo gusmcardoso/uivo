@@ -9,6 +9,9 @@ export interface Site {
   enabled: number;
   check_domain: number;
   public: number;
+  security_score: number | null;
+  security_checked_at: number | null;
+  health_score: number | null;
   status: Status;
   last_checked_at: number | null;
   last_error: string | null;
@@ -62,6 +65,16 @@ export interface PublicStatus {
   }[];
 }
 
+export type Severity = 'critical' | 'high' | 'medium' | 'low';
+
+export interface SecurityAudit {
+  at: number | null;
+  score: number | null;
+  findings: { id: string; severity: Severity; title: string; detail: string; fix: string }[];
+  passed: string[];
+  script_hosts: string[];
+}
+
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -94,6 +107,10 @@ export const api = {
   checkNow: (id: number) => request<Site>('POST', `/api/sites/${id}/check`, {}),
   checks: (id: number, range: string) =>
     request<CheckPoint[]>('GET', `/api/sites/${id}/checks?range=${range}`),
+  security: (id: number) => request<SecurityAudit>('GET', `/api/sites/${id}/security`),
+  runSecurity: (id: number) => request<SecurityAudit>('POST', `/api/sites/${id}/security`, {}),
+  acceptScripts: (id: number) =>
+    request<SecurityAudit>('POST', `/api/sites/${id}/security/accept-scripts`, {}),
   publicStatus: () => request<PublicStatus>('GET', '/api/public/status'),
   incidents: (id: number) => request<Incident[]>('GET', `/api/sites/${id}/incidents`),
 };

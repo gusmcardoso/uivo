@@ -5,6 +5,7 @@ import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
+import { acceptScripts, latestAudit } from './audit.ts';
 import {
   decodeSession,
   encodeSession,
@@ -13,7 +14,8 @@ import {
   SESSION_TTL_MS,
   verifyPassword,
 } from './auth.ts';
-import { getSite } from './db.ts';
+import { getSite, type Site } from './db.ts';
+import { healthScore } from './health.ts';
 import { registerPublicRoutes } from './public.ts';
 import { DAY, HOUR } from './util.ts';
 
@@ -21,6 +23,7 @@ export interface AppOptions {
   db: DatabaseSync;
   authSecret: string;
   runNow: (siteId: number) => Promise<void>;
+  runAudit?: (siteId: number) => Promise<void>;
   webDir?: string;
   metricsToken?: string;
   statusTitle?: string;
@@ -163,7 +166,7 @@ export async function buildApp(options: AppOptions) {
   // ─── Sites ────────────────────────────────────────────────────────────────
   app.get('/api/sites', { preHandler: requireAuth }, async () => {
     const now = Date.now();
-    return db
+    const rows = db
       .prepare(
         `SELECT s.*,
            (SELECT ROUND(AVG(ok) * 100, 2) FROM checks c WHERE c.site_id = s.id AND c.at >= ?) AS uptime_24h,
@@ -172,8 +175,49 @@ export async function buildApp(options: AppOptions) {
            (SELECT response_ms FROM checks c WHERE c.site_id = s.id ORDER BY at DESC LIMIT 1) AS last_response_ms
          FROM sites s ORDER BY s.status = 'down' DESC, s.name COLLATE NOCASE`,
       )
-      .all(now - DAY, now - 7 * DAY, now - 30 * DAY);
+      .all(now - DAY, now - 7 * DAY, now - 30 * DAY) as unknown as (Site & { uptime_7d: number | null })[];
+    return rows.map(({ script_hosts: _hosts, ...site }) => ({
+      ...site,
+      health_score: healthScore(site, site.uptime_7d, now),
+    }));
   });
+
+  // ─── Segurança ────────────────────────────────────────────────────────────
+  app.get<{ Params: { id: string } }>(
+    '/api/sites/:id/security',
+    { preHandler: requireAuth },
+    async (req, reply) => {
+      const site = getSite(db, Number(req.params.id));
+      if (!site) return reply.code(404).send({ error: 'Site não encontrado.' });
+      return (
+        latestAudit({ db }, site.id) ?? { at: null, score: null, findings: [], passed: [], script_hosts: [] }
+      );
+    },
+  );
+
+  app.post<{ Params: { id: string } }>(
+    '/api/sites/:id/security',
+    { preHandler: requireAuth },
+    async (req, reply) => {
+      const site = getSite(db, Number(req.params.id));
+      if (!site) return reply.code(404).send({ error: 'Site não encontrado.' });
+      await options.runAudit?.(site.id);
+      return latestAudit({ db }, site.id);
+    },
+  );
+
+  app.post<{ Params: { id: string } }>(
+    '/api/sites/:id/security/accept-scripts',
+    { preHandler: requireAuth },
+    async (req, reply) => {
+      const site = getSite(db, Number(req.params.id));
+      if (!site) return reply.code(404).send({ error: 'Site não encontrado.' });
+      return (
+        acceptScripts({ db }, site) ??
+        reply.code(409).send({ error: 'Ainda não há auditoria para este site.' })
+      );
+    },
+  );
 
   app.post<{ Body: SiteInput }>(
     '/api/sites',

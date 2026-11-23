@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import type { FastifyInstance } from 'fastify';
 import type { Site } from './db.ts';
+import { healthScore } from './health.ts';
 import { DAY } from './util.ts';
 
 export const STATUS_DAYS = 90;
@@ -116,8 +117,15 @@ export function renderMetrics(db: DatabaseSync, now = Date.now()): string {
       type: 'gauge',
       lines: [],
     },
+    {
+      name: 'uptrue_security_score',
+      help: 'Nota de segurança da última auditoria (0-100).',
+      type: 'gauge',
+      lines: [],
+    },
+    { name: 'uptrue_health_score', help: 'Nota de saúde do site (0-100).', type: 'gauge', lines: [] },
   ];
-  const [up, response, uptime, ssl, domain] = metrics;
+  const [up, response, uptime, ssl, domain, security, health] = metrics;
 
   for (const s of sites) {
     const l = `site="${label(s.name)}",url="${label(s.url)}"`;
@@ -134,6 +142,10 @@ export function renderMetrics(db: DatabaseSync, now = Date.now()): string {
     }
     if (s.ssl_expires_at)
       ssl.lines.push(`uptrue_ssl_expiry_timestamp_seconds{${l}} ${Math.floor(s.ssl_expires_at / 1000)}`);
+    if (s.security_score !== null) security.lines.push(`uptrue_security_score{${l}} ${s.security_score}`);
+    const r7 = (ratio.get(s.id, now - 7 * DAY) as { r: number | null }).r;
+    const hs = healthScore(s, r7 === null ? null : r7 * 100, now);
+    if (hs !== null) health.lines.push(`uptrue_health_score{${l}} ${hs}`);
     if (s.domain_expires_at) {
       domain.lines.push(
         `uptrue_domain_expiry_timestamp_seconds{${l}} ${Math.floor(s.domain_expires_at / 1000)}`,

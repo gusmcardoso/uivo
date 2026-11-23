@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api, type Site } from './api.ts';
 import { Login } from './components/Login.tsx';
 import { Logo } from './components/Logo.tsx';
+import { scoreTone } from './components/SecurityPanel.tsx';
 import { SiteDetail } from './components/SiteDetail.tsx';
 import { SiteForm } from './components/SiteForm.tsx';
 import { StatusPage } from './components/StatusPage.tsx';
@@ -130,6 +131,14 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
                   </div>
                 </div>
               </button>
+              <div className="w-14 text-sm" title="Nota de saúde: disponibilidade, segurança e validade">
+                <div className="text-xs text-zinc-500">Nota</div>
+                <div
+                  className={`text-lg font-semibold leading-tight tabular-nums ${scoreTone(site.health_score)}`}
+                >
+                  {site.health_score ?? '—'}
+                </div>
+              </div>
               <Metric label="24 h" value={formatUptime(site.uptime_24h)} />
               <Metric
                 label="Resposta"
@@ -175,7 +184,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
                 </button>
               </div>
             </div>
-            {open === site.id && <SiteDetail site={site} />}
+            {open === site.id && <SiteDetail site={site} onChange={load} />}
           </article>
         ))}
       </section>

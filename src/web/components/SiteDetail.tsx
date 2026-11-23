@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import uPlot from 'uplot';
 import { api, type CheckPoint, type Incident, type Site } from '../api.ts';
 import { dateTime, duration, formatUptime } from '../format.ts';
+import { SecurityPanel } from './SecurityPanel.tsx';
 
 const RANGES = [
   { key: '24h', label: '24 h' },
@@ -14,7 +15,7 @@ function ResponseChart({ points }: { points: CheckPoint[] }) {
 
   useEffect(() => {
     const el = ref.current;
-    if (!el || points.length === 0) return;
+    if (!el || points.length < 2) return;
     const xs = points.map((p) => p.t / 1000);
     const ms = points.map((p) => p.ms);
     const down = points.map((p) => (p.ok ? null : p.ms));
@@ -74,16 +75,50 @@ function ResponseChart({ points }: { points: CheckPoint[] }) {
     };
   }, [points]);
 
-  if (points.length === 0)
+  if (points.length < 2)
     return (
       <p className="grid h-[220px] place-items-center text-sm text-zinc-500">
-        Ainda sem checagens neste período.
+        {points.length === 0
+          ? 'Ainda sem checagens neste período.'
+          : 'Coletando dados: o gráfico aparece em alguns minutos.'}
       </p>
     );
   return <div ref={ref} className="w-full" />;
 }
 
-export function SiteDetail({ site }: { site: Site }) {
+export function SiteDetail({ site, onChange }: { site: Site; onChange: () => void }) {
+  const [tab, setTab] = useState<'perf' | 'security'>('perf');
+  return (
+    <div className="border-t border-zinc-800">
+      <div className="flex gap-1 px-5 pt-4">
+        {(
+          [
+            ['perf', 'Desempenho'],
+            ['security', 'Segurança'],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setTab(key)}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium ${tab === key ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-white'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === 'perf' ? (
+        <Performance site={site} />
+      ) : (
+        <div className="p-5">
+          <SecurityPanel siteId={site.id} onChange={onChange} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Performance({ site }: { site: Site }) {
   const [range, setRange] = useState('24h');
   const [points, setPoints] = useState<CheckPoint[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -103,7 +138,7 @@ export function SiteDetail({ site }: { site: Site }) {
   const avg = points.length ? Math.round(points.reduce((s, p) => s + p.ms, 0) / points.length) : null;
 
   return (
-    <div className="space-y-5 border-t border-zinc-800 p-5">
+    <div className="space-y-5 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-6 text-sm">
           <Stat label="Uptime 24 h" value={formatUptime(site.uptime_24h)} />

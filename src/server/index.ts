@@ -23,10 +23,12 @@ if (config.adminEmail && config.adminPassword) {
 }
 
 let runNow: (id: number) => Promise<void> = async () => {};
+let runAudit: (id: number) => Promise<void> = async () => {};
 const app = await buildApp({
   db,
   authSecret: config.authSecret,
   runNow: (id) => runNow(id),
+  runAudit: (id) => runAudit(id),
   webDir: path.join(root, 'dist', 'web'),
   metricsToken: config.metricsToken,
   statusTitle: config.statusTitle,
@@ -43,8 +45,11 @@ const scheduler = startScheduler({
   concurrency: config.concurrency,
   retentionDays: config.retentionDays,
   log: { error: (err) => app.log.error(err) },
+  // Eventos em JSON no log do container: prontos para Grafana Alloy/Promtail → Loki
+  event: (name, data) => app.log.info({ event: name, ...data }, name),
 });
 runNow = scheduler.runNow;
+runAudit = scheduler.runAudit;
 
 if (!config.telegramToken) app.log.warn('Telegram não configurado: alertas só aparecem no log.');
 

@@ -4,7 +4,7 @@
 
 **Seu site está no ar de verdade?**
 
-Monitor de saúde de sites, self-hosted e open source: disponibilidade, certificado SSL e vencimento de domínio (inclusive `.com.br` no Registro.br), com alertas no Telegram.
+Monitor de saúde de sites, self-hosted e open source. Vai além do uptime: auditoria de segurança diária, detecção de adulteração, SSL e vencimento de domínio (inclusive `.com.br` no Registro.br), com uma nota de saúde de 0 a 100 e alertas no Telegram.
 
 [![CI/CD](https://github.com/gusmcardoso/uptrue/actions/workflows/ci.yml/badge.svg)](https://github.com/gusmcardoso/uptrue/actions/workflows/ci.yml)
 [![Licença: AGPL-3.0](https://img.shields.io/badge/licen%C3%A7a-AGPL--3.0-10b981)](LICENSE)
@@ -23,7 +23,7 @@ Monitor de saúde de sites, self-hosted e open source: disponibilidade, certific
 
 ### Por que mais um monitor?
 
-Monitores tradicionais perguntam só *"o servidor respondeu?"*. O problema de quem mantém sites de clientes costuma ser outro: o site responde 200, mas a página está em branco, o SSL vence semana que vem ou o domínio expira sem ninguém perceber. O Uptrue nasce para responder **"o site está funcionando de verdade?"**, e a v0.1 é a base disso.
+Monitores tradicionais perguntam só *"o servidor respondeu?"*. O problema de quem mantém sites de clientes costuma ser outro: o site responde 200, mas a página está em branco, o SSL vence semana que vem ou o domínio expira sem ninguém perceber. O Uptrue responde **"o site está saudável, seguro e funcionando para o cliente?"**: o Uptime Kuma diz se o servidor respondeu; o Uptrue também diz se o `.env` vazou, se apareceu um script estranho na página ou se o certificado vence semana que vem.
 
 ### O que o Uptrue faz
 
@@ -37,6 +37,9 @@ Monitores tradicionais perguntam só *"o servidor respondeu?"*. O problema de qu
 | Incidentes | Início, fim e duração de cada queda, com histórico de 90 dias |
 | Painel | Uptime de 24 h, 7 e 30 dias, gráfico de tempo de resposta e vencimentos |
 | Alertas | Telegram: queda, volta (com duração) e vencimentos, sem repetir aviso |
+| **Auditoria de segurança** | 1x ao dia: arquivos sensíveis expostos (`.env`, `.git`, backups, dumps SQL, `phpinfo`), cabeçalhos de segurança, HTTPS e redirecionamento, TLS obsoleto, conteúdo misto, listagem de diretório e versão do servidor exposta, cada achado com **como corrigir** (novo na v0.3) |
+| **Detecção de adulteração** | Script externo de domínio novo na página ou termos típicos de invasão (\"hacked by\", spam de cassino) viram alerta (novo na v0.3) |
+| **Nota de saúde 0–100** | Disponibilidade (40) + segurança (40) + validade de SSL e domínio (20) (novo na v0.3) |
 | Página de status pública | `/status`, só com os sites marcados como públicos: estado atual e barras de 90 dias (novo na v0.2) |
 | Métricas Prometheus | `/metrics` protegido por token, pronto para o Grafana (novo na v0.2) |
 
@@ -61,6 +64,18 @@ Abra `http://localhost:3000` e crie a conta de administrador no primeiro acesso.
 | `STATUS_PAGE_TITLE` | não | Título da página de status pública (padrão "Status dos serviços") |
 | `METRICS_TOKEN` | não | Habilita o `/metrics` para o Prometheus (sem ele, o endpoint fica desligado) |
 
+### Auditoria de segurança
+
+Abra um site no painel e vá na aba **Segurança**: nota, achados ordenados por gravidade e o que fazer para corrigir cada um. A auditoria é **passiva**: só faz requisições GET ao que qualquer visitante já acessa, e confirma cada arquivo pelo **conteúdo** (um site que responde 200 para qualquer endereço não gera falso positivo). Use apenas em sites que você administra.
+
+![Aba de segurança](docs/seguranca.webp)
+
+Achados graves **novos** vão para o Telegram; o mesmo achado não é repetido no dia seguinte. Se você mesmo adicionou um script (analytics, chat), clique em **Aceitar scripts atuais**.
+
+### Eventos para o Loki
+
+Incidentes e achados de segurança saem como **JSON estruturado** no log do container (`"event":"incident.opened"`, `"incident.resolved"`, `"security.finding"`). Com Grafana Alloy (ou Promtail) coletando os logs do Docker, eles chegam ao Loki e aparecem no Grafana ao lado das métricas.
+
 ### Página de status pública
 
 Marque um site como **público** no painel e ele aparece em `http://seu-servidor:3000/status`, sem login: estado atual, uptime e barras dos últimos 90 dias. Só o nome e o domínio são expostos. Dá para colocar no rodapé do site do cliente ou no seu portfólio.
@@ -69,7 +84,7 @@ Marque um site como **público** no painel e ele aparece em `http://seu-servidor
 
 ### Prometheus e Grafana
 
-Com `METRICS_TOKEN` definido, o `/metrics` exporta `uptrue_site_up`, `uptrue_site_response_seconds`, `uptrue_site_uptime_ratio` (24 h, 7 e 30 dias) e os vencimentos de SSL e domínio. Exemplo de `prometheus.yml`:
+Com `METRICS_TOKEN` definido, o `/metrics` exporta `uptrue_health_score`, `uptrue_security_score`, `uptrue_site_up`, `uptrue_site_response_seconds`, `uptrue_site_uptime_ratio` (24 h, 7 e 30 dias) e os vencimentos de SSL e domínio. Exemplo de `prometheus.yml`:
 
 ```yaml
 scrape_configs:
@@ -109,10 +124,11 @@ npm run lint && npm run typecheck
 
 - [x] **v0.1**: HTTP, SSL, domínio, incidentes, painel, alertas no Telegram
 - [x] **v0.2**: página de status pública e `/metrics` para Prometheus/Grafana
+- [x] **v0.3**: auditoria de segurança, detecção de adulteração, nota de saúde e eventos para o Loki
 - [ ] Descoberta automática de sites pelo Traefik e por labels do Docker
 - [ ] Alerta no WhatsApp (opcional)
 - [ ] **v0.3**: regressão visual (print diário comparado com o anterior)
-- [ ] **v0.4**: teste sintético (botão do WhatsApp, formulário) e nota de saúde de 0 a 100
+- [ ] **v0.4**: navegador de verdade: erros de JavaScript, recursos quebrados e teste sintético (botão do WhatsApp, formulário)
 - [ ] **v0.5**: relatório mensal em PDF para o cliente
 - [ ] Painel em inglês
 
@@ -120,12 +136,12 @@ npm run lint && npm run typecheck
 
 ## English
 
-**Is your site *really* up?** Uptrue is a self-hosted, open-source site health monitor. Beyond plain uptime, it tracks SSL certificate expiry and domain expiry through RDAP (using each TLD's official server, including Brazil's Registro.br), and sends Telegram alerts on downtime, recovery and upcoming expirations.
+**Is your site *really* up?** Uptrue is a self-hosted, open-source site health monitor. Beyond plain uptime, it runs a daily passive security audit (exposed `.env`/`.git`/backups, security headers, TLS, tampering detection), computes a 0–100 health score, and tracks SSL certificate expiry and domain expiry through RDAP (using each TLD's official server, including Brazil's Registro.br), and sends Telegram alerts on downtime, recovery and upcoming expirations.
 
 - **Quick start:** grab `compose.yml` and `.env.example`, set `AUTH_SECRET`, run `docker compose up -d`, then open `http://localhost:3000` and create the admin account.
 - **Images:** multi-arch (`amd64`, `arm64`) on `ghcr.io/gusmcardoso/uptrue`.
 - **Stack:** Node 24 + TypeScript + Fastify, built-in `node:sqlite`, React + Vite + Tailwind.
-- **Status:** v0.2: public status page at `/status` and a token-protected Prometheus endpoint at `/metrics`. The UI is in Brazilian Portuguese for now; English UI is on the roadmap. Contributions are welcome.
+- **Status:** v0.3: security audit and health score, public status page at `/status`, Prometheus endpoint at `/metrics`, structured JSON events for Loki. The UI is in Brazilian Portuguese for now; English UI is on the roadmap. Contributions are welcome.
 
 Licensed under **AGPL-3.0**: free to use, modify and self-host; if you offer a modified version as a network service, you must publish its source.
 

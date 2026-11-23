@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Notifier } from './alerts/telegram.ts';
+import { type AuditDeps, runSecurityAudit } from './audit.ts';
 import { checkDomain } from './checks/domain.ts';
 import { checkHttp, type HttpResult } from './checks/http.ts';
 import { checkSsl } from './checks/ssl.ts';
@@ -20,6 +21,8 @@ export interface MonitorDeps {
   ssl?: typeof checkSsl;
   domain?: typeof checkDomain;
   now?: () => number;
+  /** Eventos estruturados (log JSON → Loki). */
+  event?: (name: string, data: Record<string, unknown>) => void;
 }
 
 interface OpenIncident {
@@ -45,6 +48,11 @@ export async function runSiteCheck(site: Site, deps: MonitorDeps): Promise<HttpR
         )
         .get(site.id) as unknown as OpenIncident | undefined;
       if (incident) db.prepare('UPDATE incidents SET ended_at = ? WHERE id = ?').run(now, incident.id);
+      deps.event?.('incident.resolved', {
+        site: site.name,
+        url: site.url,
+        duration_ms: incident ? now - incident.started_at : null,
+      });
       const duration = incident ? `\nFicou fora por ${formatDuration(now - incident.started_at)}` : '';
       await notify(`✅ <b>${esc(site.name)}</b> voltou ao ar\n${esc(site.url)}${duration}`);
     }
@@ -63,6 +71,7 @@ export async function runSiteCheck(site: Site, deps: MonitorDeps): Promise<HttpR
       now,
       result.error,
     );
+    deps.event?.('incident.opened', { site: site.name, url: site.url, reason: result.error });
     await notify(
       `🔴 <b>${esc(site.name)}</b> está fora do ar\n${esc(site.url)}\nMotivo: ${esc(result.error ?? 'desconhecido')}`,
     );
@@ -120,7 +129,7 @@ async function warnExpiry(
   await deps.notify(`⚠️ ${what} de <b>${esc(site.name)}</b> ${when}\n${esc(site.url)}`);
 }
 
-export interface SchedulerOptions extends MonitorDeps {
+export interface SchedulerOptions extends AuditDeps {
   concurrency: number;
   retentionDays: number;
   tickMs?: number;
@@ -131,6 +140,7 @@ export interface SchedulerOptions extends MonitorDeps {
 export function startScheduler(options: SchedulerOptions): {
   stop: () => void;
   runNow: (id: number) => Promise<void>;
+  runAudit: (id: number) => Promise<void>;
 } {
   const { db, log } = options;
   const running = new Set<number>();
@@ -142,6 +152,8 @@ export function startScheduler(options: SchedulerOptions): {
     try {
       await runSiteCheck(site, options);
       await runExpiryChecks(site, options);
+      const fresh = getSite(db, id);
+      if (fresh) await runSecurityAudit(fresh, options);
     } catch (err) {
       log.error(err);
     } finally {
@@ -178,5 +190,9 @@ export function startScheduler(options: SchedulerOptions): {
       clearInterval(purgeTimer);
     },
     runNow: run,
+    runAudit: async (id: number) => {
+      const site = getSite(db, id);
+      if (site) await runSecurityAudit(site, options, true);
+    },
   };
 }

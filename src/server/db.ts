@@ -13,6 +13,9 @@ export interface Site {
   enabled: number;
   check_domain: number;
   public: number;
+  security_score: number | null;
+  security_checked_at: number | null;
+  script_hosts: string | null;
   status: SiteStatus;
   fail_streak: number;
   last_checked_at: number | null;
@@ -73,6 +76,17 @@ CREATE TABLE IF NOT EXISTS incidents (
   reason TEXT
 );
 CREATE INDEX IF NOT EXISTS incidents_site ON incidents (site_id, started_at);
+CREATE TABLE IF NOT EXISTS audits (
+  id INTEGER PRIMARY KEY,
+  site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+  at INTEGER NOT NULL,
+  score INTEGER NOT NULL,
+  findings TEXT NOT NULL,
+  passed TEXT NOT NULL,
+  script_hosts TEXT NOT NULL,
+  error TEXT
+);
+CREATE INDEX IF NOT EXISTS audits_site_at ON audits (site_id, at);
 CREATE TABLE IF NOT EXISTS notices (
   site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
   kind TEXT NOT NULL,
@@ -101,4 +115,8 @@ function migrate(db: DatabaseSync): void {
     (db.prepare('PRAGMA table_info(sites)').all() as { name: string }[]).map((c) => c.name),
   );
   if (!columns.has('public')) db.exec('ALTER TABLE sites ADD COLUMN public INTEGER NOT NULL DEFAULT 0');
+  if (!columns.has('security_score')) db.exec('ALTER TABLE sites ADD COLUMN security_score INTEGER');
+  if (!columns.has('security_checked_at'))
+    db.exec('ALTER TABLE sites ADD COLUMN security_checked_at INTEGER');
+  if (!columns.has('script_hosts')) db.exec('ALTER TABLE sites ADD COLUMN script_hosts TEXT');
 }
