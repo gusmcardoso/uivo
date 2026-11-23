@@ -1,6 +1,6 @@
 {
   "name": "uptrue",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Monitor de saúde de sites: disponibilidade, SSL e vencimento de domínio, com alertas no Telegram.",
   "private": true,
   "type": "module",

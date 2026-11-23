@@ -119,7 +119,7 @@ jobs:
           docker run --rm -v "$PWD/observability/alloy:/etc/alloy:ro" grafana/alloy:v1.10.0 fmt /etc/alloy/config.alloy > /dev/null
           for f in observability/grafana/dashboards/*.json; do jq -e '.uid and (.panels | length > 0)' "$f" > /dev/null; done
       - name: Subir a pilha e testar cada painel
-        run: scripts/test-observability.sh
+        run: bash scripts/test-observability.sh
 
   # ─────────────── 3. Publicar imagem multi-arquitetura no GHCR ───────────────
   publish:
