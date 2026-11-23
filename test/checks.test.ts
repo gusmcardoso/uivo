@@ -72,7 +72,8 @@ describe('checagem HTTP', () => {
     await new Promise((r) => closed.close(r));
     const r = await checkHttp(`http://127.0.0.1:${port}/`);
     assert.equal(r.ok, false);
-    assert.equal(r.error, 'Conexão recusada');
+    // Windows/CI: recusada; WSL aceita e derruba a conexão. Em ambos, mensagem legível (não código cru).
+    assert.match(r.error ?? '', /^Conexão (recusada|encerrada pelo servidor|interrompida)$/);
   });
 });
 

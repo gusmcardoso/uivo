@@ -51,6 +51,8 @@ function describeError(err: unknown): string {
   if (code === 'EAI_AGAIN') return 'Falha temporária de DNS';
   if (code === 'ECONNREFUSED') return 'Conexão recusada';
   if (code === 'ECONNRESET') return 'Conexão interrompida';
+  if (code === 'UND_ERR_SOCKET') return 'Conexão encerrada pelo servidor';
+  if (code === 'UND_ERR_CONNECT_TIMEOUT') return 'Tempo de conexão esgotado';
   if (code?.includes('CERT')) return `Certificado inválido (${code})`;
   return code ?? e.cause?.message ?? e.message ?? String(err);
 }
