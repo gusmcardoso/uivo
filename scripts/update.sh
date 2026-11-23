@@ -95,8 +95,11 @@ else
 fi
 
 # 5. Limpa imagens antigas do Uptrue (mantém a atual e a anterior, para um rollback rápido)
-docker images "$IMAGE" --format '{{.Tag}}' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | grep -vxF -e "$target" -e "$current" |
-  while read -r old; do docker rmi -f "$IMAGE:$old" >/dev/null 2>&1 || true; done
+# "|| true": sem imagem antiga, o grep não acha nada e devolve 1; com pipefail isso encerraria o script
+{
+  docker images "$IMAGE" --format '{{.Tag}}' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | grep -vxF -e "$target" -e "$current" |
+    while read -r old; do docker rmi -f "$IMAGE:$old" >/dev/null 2>&1 || true; done
+} || true
 docker image prune -f >/dev/null 2>&1 || true
 
 # 6. Atualiza os próprios scripts de operação para os da versão instalada

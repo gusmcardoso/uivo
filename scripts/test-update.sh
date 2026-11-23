@@ -15,7 +15,17 @@ export COMPOSE_PROJECT_NAME=uptrue-update-test BACKUP_DIR="$DIR/backups"
 PORT="${PORT:-3730}"
 FAILS=0
 
-ok() { if [ "$2" = true ]; then echo "OK    $1"; else echo "FALHA $1 → ${2:-}"; FAILS=$((FAILS + 1)); [ -n "${GITHUB_ACTIONS:-}" ] && echo "::error title=Atualização::$1"; fi; return 0; }
+ok() {
+  if [ "$2" = true ]; then
+    echo "OK    $1"
+  else
+    echo "FALHA $1 → ${2:-}"
+    FAILS=$((FAILS + 1))
+    # anotação com o motivo (sem quebras de linha), visível no commit sem abrir o log
+    [ -n "${GITHUB_ACTIONS:-}" ] && echo "::error title=Atualização::$1 → $(printf '%s' "${2:-}" | tr '\n' ' ' | cut -c1-300)"
+  fi
+  return 0
+}
 running_tag() { docker inspect -f '{{.Config.Image}}' "$(docker compose ps -q uptrue)" 2>/dev/null | sed 's/.*://'; }
 cleanup() { (cd "$DIR" && docker compose down -v >/dev/null 2>&1); rm -rf "$DIR"; }
 trap cleanup EXIT

@@ -26,7 +26,8 @@ docker compose cp -q uptrue:/data/backup-tmp.db "$DEST/$FILE" 2>/dev/null || doc
 docker compose exec -T uptrue rm -f /data/backup-tmp.db
 
 # Só vale como backup se abrir e tiver a estrutura esperada
-sites=$(docker run --rm -v "$DEST:/b:ro" "$image" node -e "
+# roda como o usuário atual: a pasta é 700 e o uid do container (node) pode ser outro
+sites=$(docker run --rm --user "$(id -u):$(id -g)" -v "$DEST:/b:ro" "$image" node -e "
   const { DatabaseSync } = require('node:sqlite');
   const db = new DatabaseSync('/b/$FILE', { readOnly: true });
   if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') process.exit(3);
