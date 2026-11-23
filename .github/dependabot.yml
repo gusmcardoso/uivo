@@ -1,17 +1,27 @@
 version: 2
+# Um PR agrupado por ecossistema (em vez de um por pacote), com commits "deps(...)".
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
+    commit-message:
+      prefix: deps
     groups:
-      dependencias:
+      npm:
         patterns: ['*']
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    commit-message:
+      prefix: deps(ci)
+    groups:
+      github-actions:
+        patterns: ['*']
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: monthly
+    commit-message:
+      prefix: deps(docker)

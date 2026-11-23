@@ -35,7 +35,7 @@ export interface HttpOptions {
   timeoutMs?: number;
 }
 
-const USER_AGENT = 'Uptrue/0.5 (+https://github.com/gusmcardoso/uptrue)';
+const USER_AGENT = 'Uptrue/0.1 (+https://github.com/gusmcardoso/uptrue)';
 const MAX_REDIRECTS = 5;
 /** Download máximo medido; acima disso a transferência é interrompida (protege o monitor). */
 const MAX_BYTES = 5 * 1024 * 1024;

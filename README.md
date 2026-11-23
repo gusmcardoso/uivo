@@ -30,7 +30,7 @@ Monitores tradicionais perguntam só *"o servidor respondeu?"*. O problema de qu
 | Recurso | Detalhe |
 | --- | --- |
 | Checagem HTTP | Status, tempo de resposta e redirecionamentos, de 30 s a 1 h por site |
-| **Onde o tempo foi gasto** | Cada checagem mede redirecionamentos, DNS, conexão, TLS, espera do servidor e download; gráfico em camadas, cascata da última checagem, p50/p95/p99, tamanho, compressão e um diagnóstico de qual etapa pesa mais e o que fazer (novo na v0.4) |
+| **Onde o tempo foi gasto** | Cada checagem mede redirecionamentos, DNS, conexão, TLS, espera do servidor e download; gráfico em camadas, cascata da última checagem, p50/p95/p99, tamanho, compressão e um diagnóstico de qual etapa pesa mais e o que fazer (v0.1.3) |
 | Palavra-chave | Opcional: só conta como no ar se o texto aparecer na página (pega página em branco com 200) |
 | Confirmação de queda | Só declara "fora do ar" após 2 falhas seguidas, sem alarme falso |
 | Certificado SSL | Dias até vencer, emissor e validade da cadeia; avisos com 14 e 3 dias |
@@ -38,11 +38,11 @@ Monitores tradicionais perguntam só *"o servidor respondeu?"*. O problema de qu
 | Incidentes | Início, fim e duração de cada queda, com histórico de 90 dias |
 | Painel | Uptime de 24 h, 7 e 30 dias, gráfico de tempo de resposta e vencimentos |
 | Alertas | Telegram: queda, volta (com duração) e vencimentos, sem repetir aviso |
-| **Auditoria de segurança** | 1x ao dia: arquivos sensíveis expostos (`.env`, `.git`, backups, dumps SQL, `phpinfo`), cabeçalhos de segurança, HTTPS e redirecionamento, TLS obsoleto, conteúdo misto, listagem de diretório e versão do servidor exposta, cada achado com **como corrigir** (novo na v0.3) |
-| **Detecção de adulteração** | Script externo de domínio novo na página ou termos típicos de invasão (\"hacked by\", spam de cassino) viram alerta (novo na v0.3) |
-| **Nota de saúde 0–100** | Disponibilidade (40) + segurança (40) + validade de SSL e domínio (20) (novo na v0.3) |
-| Página de status pública | `/status`, só com os sites marcados como públicos: estado atual e barras de 90 dias (novo na v0.2) |
-| Métricas Prometheus | `/metrics` protegido por token, pronto para o Grafana (novo na v0.2) |
+| **Auditoria de segurança** | 1x ao dia: arquivos sensíveis expostos (`.env`, `.git`, backups, dumps SQL, `phpinfo`), cabeçalhos de segurança, HTTPS e redirecionamento, TLS obsoleto, conteúdo misto, listagem de diretório e versão do servidor exposta, cada achado com **como corrigir** (v0.1.2) |
+| **Detecção de adulteração** | Script externo de domínio novo na página ou termos típicos de invasão (\"hacked by\", spam de cassino) viram alerta (v0.1.2) |
+| **Nota de saúde 0–100** | Disponibilidade (40) + segurança (40) + validade de SSL e domínio (20) (v0.1.2) |
+| Página de status pública | `/status`, só com os sites marcados como públicos: estado atual e barras de 90 dias (v0.1.1) |
+| Métricas Prometheus | `/metrics` protegido por token, pronto para o Grafana (v0.1.1) |
 
 ### Rodando com Docker
 
@@ -159,16 +159,16 @@ npm run lint && npm run typecheck
 
 ### Roadmap
 
-- [x] **v0.1**: HTTP, SSL, domínio, incidentes, painel, alertas no Telegram
-- [x] **v0.2**: página de status pública e `/metrics` para Prometheus/Grafana
-- [x] **v0.3**: auditoria de segurança, detecção de adulteração, nota de saúde e eventos para o Loki
-- [x] **v0.4**: tempo por etapa (DNS, conexão, TLS, servidor, download), percentis e diagnóstico
-- [x] **v0.5**: perfil de observabilidade (Prometheus, Grafana, Loki, Alloy, node_exporter, cAdvisor) com dashboards prontos e testados no CI
+- [x] **v0.1.0**: HTTP, SSL, domínio, incidentes, painel, alertas no Telegram
+- [x] **v0.1.1**: página de status pública e `/metrics` para Prometheus/Grafana
+- [x] **v0.1.2**: auditoria de segurança, detecção de adulteração, nota de saúde e eventos para o Loki
+- [x] **v0.1.3**: tempo por etapa (DNS, conexão, TLS, servidor, download), percentis e diagnóstico
+- [x] **v0.1.4**: perfil de observabilidade (Prometheus, Grafana, Loki, Alloy, node_exporter, cAdvisor) com dashboards prontos e testados no CI
 - [ ] Descoberta automática de sites pelo Traefik e por labels do Docker
 - [ ] Alerta no WhatsApp (opcional)
-- [ ] **v0.3**: regressão visual (print diário comparado com o anterior)
+- [ ] Regressão visual (print diário comparado com o anterior)
 - [ ] Navegador de verdade: erros de JavaScript, recursos quebrados e teste sintético (botão do WhatsApp, formulário)
-- [ ] **v0.5**: relatório mensal em PDF para o cliente
+- [ ] Relatório mensal em PDF para o cliente
 - [ ] Painel em inglês
 
 ---
@@ -180,7 +180,7 @@ npm run lint && npm run typecheck
 - **Quick start:** grab `compose.yml` and `.env.example`, set `AUTH_SECRET`, run `docker compose up -d`, then open `http://localhost:3000` and create the admin account.
 - **Images:** multi-arch (`amd64`, `arm64`) on `ghcr.io/gusmcardoso/uptrue`.
 - **Stack:** Node 24 + TypeScript + Fastify, built-in `node:sqlite`, React + Vite + Tailwind.
-- **Status:** v0.5: one-command observability profile (Prometheus, Grafana, Loki, Alloy, node_exporter, cAdvisor) with provisioned dashboards; v0.4: per-phase timing (DNS, connect, TLS, server wait, download) with percentiles and diagnosis, security audit and health score, public status page at `/status`, Prometheus endpoint at `/metrics`, structured JSON events for Loki. The UI is in Brazilian Portuguese for now; English UI is on the roadmap. Contributions are welcome.
+- **Status:** v0.1.4 (development): uptime, SSL and domain expiry, security audit with health score, per-phase timing, public status page, Prometheus metrics and a one-command observability profile (Grafana, Loki, Alloy, node_exporter, cAdvisor).
 
 Licensed under **AGPL-3.0**: free to use, modify and self-host; if you offer a modified version as a network service, you must publish its source.
 
