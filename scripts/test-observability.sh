@@ -26,7 +26,15 @@ js() { node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{const d=
 # No GitHub Actions, cada falha vira anotação (visível no commit/PR sem abrir o log)
 fail() { echo "FALHA $1"; FAILS=$((FAILS + 1)); [ -n "${GITHUB_ACTIONS:-}" ] && echo "::error title=Observabilidade::$1"; return 0; }
 ok() { if [ "$2" = "true" ]; then echo "OK    $1"; else fail "$1 → ${2:-sem resposta}"; fi; }
-unpublished() { local p; p=$(docker compose port "$1" "$2" 2>/dev/null); [ -z "$p" ] || [ "$p" = ":0" ]; }
+# Porta não publicada: o "docker port" do Engine falha (formato estável). O "docker compose port"
+# muda de formato entre versões (":0", vazio…); fica só registrado para diagnóstico.
+unpublished() {
+  local id raw
+  id=$(docker compose ps -q "$1")
+  raw=$(docker compose port "$1" "$2" 2>&1 | head -1)
+  [ -n "${GITHUB_ACTIONS:-}" ] && echo "::notice title=compose port $1::saída crua: '$raw'"
+  [ -n "$id" ] && ! docker port "$id" "$2/tcp" >/dev/null 2>&1
+}
 cleanup() { rm -f "$JAR"; [ -n "${KEEP:-}" ] || docker compose --profile observability down -v >/dev/null 2>&1; }
 trap cleanup EXIT
 
