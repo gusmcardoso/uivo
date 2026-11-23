@@ -27,6 +27,11 @@ export function SiteForm({
     check_domain: site ? Boolean(site.check_domain) : true,
     public: site ? Boolean(site.public) : false,
   });
+  // Cabeçalhos de liberação: os valores salvos nunca voltam do servidor (só os nomes);
+  // valor em branco num nome já salvo mantém o segredo.
+  const [headers, setHeaders] = useState<{ name: string; value: string; saved: boolean }[]>(
+    (site?.custom_header_names ?? []).map((name) => ({ name, value: '', saved: true })),
+  );
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const set = <K extends keyof SitePayload>(key: K, value: SitePayload[K]) =>
@@ -47,6 +52,7 @@ export function SiteForm({
       name: form.name.trim(),
       url: form.url.trim(),
       keyword: form.keyword?.trim() || null,
+      headers: Object.fromEntries(headers.filter((h) => h.name.trim()).map((h) => [h.name.trim(), h.value])),
     };
     try {
       await (site ? api.updateSite(site.id, body) : api.createSite(body));
@@ -139,6 +145,57 @@ export function SiteForm({
           />
           Mostrar na página de status pública
         </label>
+        <fieldset className="space-y-2">
+          <legend className="text-sm text-zinc-300">Cabeçalhos de liberação (opcional)</legend>
+          <p className="text-xs text-zinc-500">
+            Para sites atrás de firewall com desafio anti-bot: o Uptrue envia o cabeçalho e o firewall libera
+            quem o tiver. Os valores ficam só no servidor e não são exibidos de novo.
+          </p>
+          {headers.map((h, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: linhas editáveis sem identificador próprio
+            <div key={i} className="flex gap-2">
+              <input
+                className="input"
+                placeholder="x-uptrue-key"
+                maxLength={64}
+                value={h.name}
+                onChange={(e) =>
+                  setHeaders((list) =>
+                    list.map((x, j) => (j === i ? { ...x, name: e.target.value, saved: false } : x)),
+                  )
+                }
+              />
+              <input
+                className="input"
+                type="password"
+                autoComplete="off"
+                maxLength={512}
+                placeholder={h.saved ? 'manter o valor salvo' : 'valor secreto'}
+                value={h.value}
+                onChange={(e) =>
+                  setHeaders((list) => list.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))
+                }
+              />
+              <button
+                type="button"
+                className="btn-ghost px-2.5 hover:text-red-400"
+                title="Remover"
+                onClick={() => setHeaders((list) => list.filter((_, j) => j !== i))}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          {headers.length < 5 && (
+            <button
+              type="button"
+              className="btn-ghost px-0 text-emerald-400 hover:bg-transparent"
+              onClick={() => setHeaders((list) => [...list, { name: '', value: '', saved: false }])}
+            >
+              + Adicionar cabeçalho
+            </button>
+          )}
+        </fieldset>
         <label className="flex items-center gap-2 text-sm text-zinc-300">
           <input
             type="checkbox"

@@ -30,6 +30,7 @@ Monitores tradicionais perguntam só *"o servidor respondeu?"*. O problema de qu
 | Recurso | Detalhe |
 | --- | --- |
 | Checagem HTTP | Status, tempo de resposta e redirecionamentos, de 30 s a 1 h por site |
+| **Sites atrás de firewall** | Reconhece desafios anti-bot (Vercel, Cloudflare, Sucuri, AWS WAF, DataDome, Akamai, Wordfence): verificação em camadas confirma DNS, conexão, TLS e resposta do servidor sem acusar queda falsa; cabeçalho de liberação por site para a verificação completa (v0.1.5) |
 | **Onde o tempo foi gasto** | Cada checagem mede redirecionamentos, DNS, conexão, TLS, espera do servidor e download; gráfico em camadas, cascata da última checagem, p50/p95/p99, tamanho, compressão e um diagnóstico de qual etapa pesa mais e o que fazer (v0.1.3) |
 | Palavra-chave | Opcional: só conta como no ar se o texto aparecer na página (pega página em branco com 200) |
 | Confirmação de queda | Só declara "fora do ar" após 2 falhas seguidas, sem alarme falso |
@@ -64,6 +65,20 @@ Abra `http://localhost:3000` e crie a conta de administrador no primeiro acesso.
 | `CHECK_CONCURRENCY` | não | Checagens simultâneas (padrão 10) |
 | `STATUS_PAGE_TITLE` | não | Título da página de status pública (padrão "Status dos serviços") |
 | `METRICS_TOKEN` | não | Habilita o `/metrics` para o Prometheus (sem ele, o endpoint fica desligado) |
+
+### Sites atrás de firewall (desafio anti-bot)
+
+Vercel, Cloudflare e outros firewalls podem responder com um desafio ("verificando seu navegador") para quem não executa JavaScript, como qualquer monitor. Em vez de acusar queda falsa, o Uptrue **reconhece o desafio** e verifica em camadas: se DNS, conexão, certificado e a resposta do servidor estão ok, o site está **no ar, com o conteúdo não verificado** (sem incidente, sem derrubar o uptime; aviso único no Telegram explicando como liberar).
+
+O Uptrue **não tenta resolver nem contornar** desafios. Para a verificação completa (página e palavra-chave), escolha uma forma autorizada:
+
+| Forma | Como |
+| --- | --- |
+| Cabeçalho de liberação | Em **Editar → Cabeçalhos de liberação**, cadastre por exemplo `x-uptrue-key` com um valor secreto e crie no firewall uma regra que libere quem enviar esse cabeçalho (Vercel: Custom Rule com ação *Bypass*; Cloudflare: WAF Custom Rule com ação *Skip*). O valor fica só no servidor e nunca é devolvido pela API |
+| IP permitido | Libere o IP do servidor do Uptrue no firewall |
+| Endereço de saúde | Monitore um caminho que fique fora do desafio (ex.: `/healthz`) |
+
+No Prometheus, `uptrue_site_content_verified` é 0 enquanto o conteúdo estiver barrado.
 
 ### Onde o tempo foi gasto
 
@@ -163,6 +178,7 @@ npm run lint && npm run typecheck
 - [x] **v0.1.1**: página de status pública e `/metrics` para Prometheus/Grafana
 - [x] **v0.1.2**: auditoria de segurança, detecção de adulteração, nota de saúde e eventos para o Loki
 - [x] **v0.1.3**: tempo por etapa (DNS, conexão, TLS, servidor, download), percentis e diagnóstico
+- [x] **v0.1.5**: sites atrás de firewall: detecção de desafio anti-bot, verificação em camadas e cabeçalhos de liberação
 - [x] **v0.1.4**: perfil de observabilidade (Prometheus, Grafana, Loki, Alloy, node_exporter, cAdvisor) com dashboards prontos e testados no CI
 - [ ] Descoberta automática de sites pelo Traefik e por labels do Docker
 - [ ] Alerta no WhatsApp (opcional)
@@ -180,7 +196,7 @@ npm run lint && npm run typecheck
 - **Quick start:** grab `compose.yml` and `.env.example`, set `AUTH_SECRET`, run `docker compose up -d`, then open `http://localhost:3000` and create the admin account.
 - **Images:** multi-arch (`amd64`, `arm64`) on `ghcr.io/gusmcardoso/uptrue`.
 - **Stack:** Node 24 + TypeScript + Fastify, built-in `node:sqlite`, React + Vite + Tailwind.
-- **Status:** v0.1.4 (development): uptime, SSL and domain expiry, security audit with health score, per-phase timing, public status page, Prometheus metrics and a one-command observability profile (Grafana, Loki, Alloy, node_exporter, cAdvisor).
+- **Status:** v0.1.5 (development): uptime (with anti-bot challenge detection and layered verification for sites behind Vercel/Cloudflare firewalls), SSL and domain expiry, security audit with health score, per-phase timing, public status page, Prometheus metrics and a one-command observability profile (Grafana, Loki, Alloy, node_exporter, cAdvisor).
 
 Licensed under **AGPL-3.0**: free to use, modify and self-host; if you offer a modified version as a network service, you must publish its source.
 

@@ -64,6 +64,12 @@ export function SecurityPanel({ siteId, onChange }: { siteId: number; onChange: 
         </div>
       </div>
 
+      {audit?.error && (
+        <p className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3.5 text-sm text-amber-200">
+          A última auditoria não pôde ser feita: {audit.error}
+        </p>
+      )}
+
       {audit && audit.findings.length > 0 && (
         <ul className="space-y-2">
           {[...audit.findings]

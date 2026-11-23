@@ -1,10 +1,11 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Notifier } from './alerts/telegram.ts';
 import { type AuditDeps, runSecurityAudit } from './audit.ts';
+import { challengeHelp } from './checks/challenge.ts';
 import { checkDomain } from './checks/domain.ts';
 import { checkHttp, type HttpResult } from './checks/http.ts';
 import { checkSsl } from './checks/ssl.ts';
-import { getSite, type Site } from './db.ts';
+import { getSite, type Site, siteHeaders } from './db.ts';
 import { DAY, escapeHtml as esc, formatDuration, HOUR } from './util.ts';
 
 /** Falhas seguidas necessárias para declarar o site fora do ar (evita alarme falso). */
@@ -33,14 +34,17 @@ interface OpenIncident {
 /** Executa a checagem HTTP, grava o resultado e trata as mudanças de estado (queda/volta). */
 export async function runSiteCheck(site: Site, deps: MonitorDeps): Promise<HttpResult> {
   const { db, notify } = deps;
-  const result = await (deps.http ?? checkHttp)(site.url, { keyword: site.keyword });
+  const result = await (deps.http ?? checkHttp)(site.url, {
+    keyword: site.keyword,
+    headers: siteHeaders(site),
+  });
   const now = (deps.now ?? Date.now)();
 
   const t = result.timings ?? null;
   db.prepare(
     `INSERT INTO checks (site_id, at, ok, status_code, response_ms, error,
-       redirect_ms, dns_ms, connect_ms, tls_ms, wait_ms, download_ms, bytes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       redirect_ms, dns_ms, connect_ms, tls_ms, wait_ms, download_ms, bytes, challenge)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     site.id,
     now,
@@ -55,6 +59,7 @@ export async function runSiteCheck(site: Site, deps: MonitorDeps): Promise<HttpR
     t?.wait ?? null,
     t?.download ?? null,
     result.bytes ?? null,
+    result.challenge ?? null,
   );
   if (t) {
     db.prepare('UPDATE sites SET last_timing = ? WHERE id = ?').run(
@@ -69,6 +74,24 @@ export async function runSiteCheck(site: Site, deps: MonitorDeps): Promise<HttpR
       }),
       site.id,
     );
+  }
+
+  // Desafio anti-bot: avisa uma vez quando começa (e registra quando some)
+  const challenge = result.challenge ?? null;
+  if (challenge !== site.last_challenge) {
+    db.prepare('UPDATE sites SET last_challenge = ? WHERE id = ?').run(challenge, site.id);
+    if (challenge) {
+      deps.event?.('check.challenged', { site: site.name, url: site.url, provider: challenge });
+      await notify(
+        [
+          `🛡️ <b>${esc(site.name)}</b>: o firewall (${esc(challenge)}) está barrando o monitor`,
+          'O servidor respondeu (DNS, conexão e TLS ok), mas o conteúdo não pode ser verificado.',
+          esc(challengeHelp(challenge)),
+        ].join('\n'),
+      );
+    } else if (site.last_challenge) {
+      deps.event?.('check.unchallenged', { site: site.name, url: site.url, provider: site.last_challenge });
+    }
   }
 
   if (result.ok) {

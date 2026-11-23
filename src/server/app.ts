@@ -14,7 +14,7 @@ import {
   SESSION_TTL_MS,
   verifyPassword,
 } from './auth.ts';
-import { getSite, type Site } from './db.ts';
+import { getSite, type Site, siteHeaders } from './db.ts';
 import { healthScore } from './health.ts';
 import { registerPublicRoutes } from './public.ts';
 import { DAY, HOUR } from './util.ts';
@@ -51,6 +51,13 @@ const siteBody = {
     enabled: { type: 'boolean' },
     check_domain: { type: 'boolean' },
     public: { type: 'boolean' },
+    // Cabeçalhos de liberação (ex.: segredo do firewall). Valor vazio mantém o já salvo.
+    headers: {
+      type: 'object',
+      maxProperties: 5,
+      propertyNames: { pattern: '^[A-Za-z0-9-]{1,64}$' },
+      additionalProperties: { type: 'string', maxLength: 512 },
+    },
   },
 } as const;
 
@@ -72,6 +79,7 @@ interface SiteInput {
   enabled?: boolean;
   check_domain?: boolean;
   public?: boolean;
+  headers?: Record<string, string>;
 }
 
 export async function buildApp(options: AppOptions) {
@@ -176,22 +184,25 @@ export async function buildApp(options: AppOptions) {
          FROM sites s ORDER BY s.status = 'down' DESC, s.name COLLATE NOCASE`,
       )
       .all(now - DAY, now - 7 * DAY, now - 30 * DAY) as unknown as (Site & { uptime_7d: number | null })[];
-    return rows.map(({ script_hosts: _hosts, last_timing: _timing, ...site }) => ({
-      ...site,
+    return rows.map((site) => ({
+      ...publicSite(site),
       health_score: healthScore(site, site.uptime_7d, now),
     }));
   });
 
   // ─── Segurança ────────────────────────────────────────────────────────────
+  /** Última auditoria + o motivo, se a mais recente não pôde ser feita (ex.: desafio anti-bot). */
+  const securityView = (siteId: number) => ({
+    ...(latestAudit({ db }, siteId) ?? { at: null, score: null, findings: [], passed: [], script_hosts: [] }),
+    error: getSite(db, siteId)?.security_error ?? null,
+  });
   app.get<{ Params: { id: string } }>(
     '/api/sites/:id/security',
     { preHandler: requireAuth },
     async (req, reply) => {
       const site = getSite(db, Number(req.params.id));
       if (!site) return reply.code(404).send({ error: 'Site não encontrado.' });
-      return (
-        latestAudit({ db }, site.id) ?? { at: null, score: null, findings: [], passed: [], script_hosts: [] }
-      );
+      return securityView(site.id);
     },
   );
 
@@ -202,7 +213,7 @@ export async function buildApp(options: AppOptions) {
       const site = getSite(db, Number(req.params.id));
       if (!site) return reply.code(404).send({ error: 'Site não encontrado.' });
       await options.runAudit?.(site.id);
-      return latestAudit({ db }, site.id);
+      return securityView(site.id);
     },
   );
 
@@ -224,10 +235,12 @@ export async function buildApp(options: AppOptions) {
     { preHandler: requireAuth, schema: { body: { ...siteBody, required: ['name', 'url'] } } },
     async (req, reply) => {
       const b = req.body;
+      const headers = mergeHeaders({}, b.headers);
+      if (typeof headers === 'string') return reply.code(400).send({ error: headers });
       const result = db
         .prepare(
-          `INSERT INTO sites (name, url, interval_sec, keyword, enabled, check_domain, public, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO sites (name, url, interval_sec, keyword, enabled, check_domain, public, custom_headers, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           b.name ?? '',
@@ -237,11 +250,12 @@ export async function buildApp(options: AppOptions) {
           b.enabled === false ? 0 : 1,
           b.check_domain === false ? 0 : 1,
           b.public ? 1 : 0,
+          Object.keys(headers).length ? JSON.stringify(headers) : null,
           Date.now(),
         );
       const id = Number(result.lastInsertRowid);
       void options.runNow(id);
-      return reply.code(201).send(getSite(db, id));
+      return reply.code(201).send(publicSite(getSite(db, id)));
     },
   );
 
@@ -253,8 +267,12 @@ export async function buildApp(options: AppOptions) {
       if (!site) return reply.code(404).send({ error: 'Site não encontrado.' });
       const b = req.body;
       const urlChanged = b.url !== undefined && b.url !== site.url;
+      const headers =
+        b.headers === undefined ? siteHeaders(site) : mergeHeaders(siteHeaders(site), b.headers);
+      if (typeof headers === 'string') return reply.code(400).send({ error: headers });
       db.prepare(
-        `UPDATE sites SET name = ?, url = ?, interval_sec = ?, keyword = ?, enabled = ?, check_domain = ?, public = ?
+        `UPDATE sites SET name = ?, url = ?, interval_sec = ?, keyword = ?, enabled = ?, check_domain = ?, public = ?,
+           custom_headers = ?
          ${urlChanged ? ', ssl_checked_at = NULL, domain_checked_at = NULL' : ''} WHERE id = ?`,
       ).run(
         b.name ?? site.name,
@@ -264,10 +282,11 @@ export async function buildApp(options: AppOptions) {
         b.enabled === undefined ? site.enabled : Number(b.enabled),
         b.check_domain === undefined ? site.check_domain : Number(b.check_domain),
         b.public === undefined ? site.public : Number(b.public),
+        Object.keys(headers).length ? JSON.stringify(headers) : null,
         site.id,
       );
       if (urlChanged) void options.runNow(site.id);
-      return getSite(db, site.id);
+      return publicSite(getSite(db, site.id));
     },
   );
 
@@ -288,7 +307,7 @@ export async function buildApp(options: AppOptions) {
       const id = Number(req.params.id);
       if (!getSite(db, id)) return reply.code(404).send({ error: 'Site não encontrado.' });
       await options.runNow(id);
-      return getSite(db, id);
+      return publicSite(getSite(db, id));
     },
   );
 
@@ -382,4 +401,40 @@ export function percentile(sorted: number[], p: number): number | null {
   if (sorted.length === 0) return null;
   const rank = Math.ceil((p / 100) * sorted.length);
   return sorted[Math.min(sorted.length, Math.max(1, rank)) - 1];
+}
+
+/** Cabeçalhos que não podem ser sobrescritos (quebrariam a requisição ou a medição). */
+const RESERVED_HEADERS = new Set([
+  'host',
+  'content-length',
+  'connection',
+  'transfer-encoding',
+  'accept-encoding',
+]);
+
+/**
+ * Junta os cabeçalhos enviados pelo painel com os já salvos. Valor vazio num nome existente
+ * mantém o segredo salvo (o painel nunca recebe os valores de volta); nome ausente é removido.
+ */
+export function mergeHeaders(
+  saved: Record<string, string>,
+  incoming: Record<string, string> | undefined,
+): Record<string, string> | string {
+  if (!incoming) return {};
+  const out: Record<string, string> = {};
+  for (const [rawName, value] of Object.entries(incoming)) {
+    const name = rawName.toLowerCase();
+    if (RESERVED_HEADERS.has(name)) return `O cabeçalho "${rawName}" não pode ser personalizado.`;
+    if (/[\r\n]/.test(value)) return `Valor inválido no cabeçalho "${rawName}".`;
+    const kept = value === '' ? saved[name] : value;
+    if (kept) out[name] = kept;
+  }
+  return out;
+}
+
+/** O site como sai pela API: sem campos internos e sem os valores dos cabeçalhos de liberação. */
+export function publicSite<T extends Site | undefined>(site: T) {
+  if (!site) return site;
+  const { script_hosts: _hosts, last_timing: _timing, custom_headers: _headers, ...rest } = site;
+  return { ...rest, custom_header_names: Object.keys(siteHeaders(site)) };
 }

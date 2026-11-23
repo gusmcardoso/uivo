@@ -145,6 +145,20 @@ function Performance({ site }: { site: Site }) {
 
   return (
     <div className="space-y-5 p-5">
+      {site.last_challenge && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3.5 text-sm text-zinc-300">
+          <p className="font-medium text-amber-300">
+            Conteúdo não verificável: o firewall ({site.last_challenge}) exige um navegador.
+          </p>
+          <p className="mt-1">
+            O site está no ar: DNS, conexão, certificado (em HTTPS) e a resposta do servidor foram
+            confirmados. Só a página (e a palavra-chave) não pode ser lida. Para a verificação completa,
+            cadastre um cabeçalho de liberação em{' '}
+            <span className="text-zinc-100">Editar → Cabeçalhos de liberação</span> e crie no firewall uma
+            regra que libere esse cabeçalho, ou libere o IP do servidor do Uptrue.
+          </p>
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-6 text-sm">
           <Stat label="Uptime 24 h" value={formatUptime(site.uptime_24h)} />

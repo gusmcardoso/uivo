@@ -124,12 +124,19 @@ export function renderMetrics(db: DatabaseSync, now = Date.now()): string {
       lines: [],
     },
     { name: 'uptrue_health_score', help: 'Nota de saúde do site (0-100).', type: 'gauge', lines: [] },
+    {
+      name: 'uptrue_site_content_verified',
+      help: 'Conteúdo da página verificado (1) ou barrado por desafio anti-bot (0).',
+      type: 'gauge',
+      lines: [],
+    },
   ];
-  const [up, response, uptime, ssl, domain, security, health] = metrics;
+  const [up, response, uptime, ssl, domain, security, health, verified] = metrics;
 
   for (const s of sites) {
     const l = `site="${label(s.name)}",url="${label(s.url)}"`;
     up.lines.push(`uptrue_site_up{${l}} ${s.status === 'up' ? 1 : s.status === 'down' ? 0 : -1}`);
+    verified.lines.push(`uptrue_site_content_verified{${l}} ${s.last_challenge ? 0 : 1}`);
     const ms = (last.get(s.id) as { response_ms: number } | undefined)?.response_ms;
     if (ms !== undefined) response.lines.push(`uptrue_site_response_seconds{${l}} ${ms / 1000}`);
     for (const [window, span] of [

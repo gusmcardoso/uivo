@@ -1,4 +1,5 @@
 import tls from 'node:tls';
+import { detectChallenge } from './challenge.ts';
 import { registrableDomain } from './domain.ts';
 
 export type Severity = 'critical' | 'high' | 'medium' | 'low';
@@ -214,7 +215,14 @@ function tlsProtocol(host: string, port: number): Promise<string | null> {
  * Auditoria passiva: só lê o que qualquer visitante já consegue acessar
  * (página inicial, cabeçalhos e endereços públicos conhecidos). Nada é enviado ao site além de GETs.
  */
-export async function auditSecurity(url: string, fetchImpl: typeof fetch = fetch): Promise<AuditResult> {
+export async function auditSecurity(
+  url: string,
+  baseFetch: typeof fetch = fetch,
+  headers: Record<string, string> = {},
+): Promise<AuditResult> {
+  // Cabeçalhos de liberação do site (ex.: segredo do firewall) vão em todas as requisições
+  const fetchImpl: typeof fetch = (input, init) =>
+    baseFetch(input, { ...init, headers: { ...(init?.headers as Record<string, string>), ...headers } });
   const target = new URL(url);
   const origin = target.origin;
   const findings: Finding[] = [];
@@ -229,6 +237,18 @@ export async function auditSecurity(url: string, fetchImpl: typeof fetch = fetch
   const finalUrl = new URL(page.url);
   const https = finalUrl.protocol === 'https:';
   const h = (name: string) => page.headers.get(name);
+
+  // Página de desafio anti-bot: auditar aqui avaliaria o firewall, não o site
+  const challenge = detectChallenge(page.status, (name) => h(name) ?? undefined, page.body);
+  if (challenge) {
+    return {
+      score: 0,
+      findings: [],
+      passed: [],
+      scriptHosts: [],
+      error: `Página protegida pelo desafio anti-bot (${challenge}): a auditoria precisa de um cabeçalho de liberação`,
+    };
+  }
 
   // ─── HTTPS ──────────────────────────────────────────────────────────────
   if (!https) {

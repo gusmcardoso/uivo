@@ -11,6 +11,9 @@ export interface Site {
   public: number;
   security_score: number | null;
   security_checked_at: number | null;
+  /** Provedor do desafio anti-bot da última checagem (conteúdo não verificado). */
+  last_challenge: string | null;
+  custom_header_names: string[];
   health_score: number | null;
   status: Status;
   last_checked_at: number | null;
@@ -34,6 +37,8 @@ export interface SitePayload {
   enabled: boolean;
   check_domain: boolean;
   public: boolean;
+  /** Valor vazio mantém o segredo já salvo. */
+  headers?: Record<string, string>;
 }
 
 export type Phase = 'redirect' | 'dns' | 'connect' | 'tls' | 'wait' | 'download';
@@ -93,6 +98,8 @@ export interface SecurityAudit {
   findings: { id: string; severity: Severity; title: string; detail: string; fix: string }[];
   passed: string[];
   script_hosts: string[];
+  /** Motivo de a auditoria mais recente não ter sido feita (ex.: desafio anti-bot). */
+  error: string | null;
 }
 
 export class ApiError extends Error {

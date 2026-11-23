@@ -1,5 +1,5 @@
 import { auditSecurity, type Finding, scoreOf } from './checks/security.ts';
-import type { Site } from './db.ts';
+import { type Site, siteHeaders } from './db.ts';
 import type { MonitorDeps } from './monitor.ts';
 import { DAY, escapeHtml as esc } from './util.ts';
 
@@ -57,10 +57,14 @@ export async function runSecurityAudit(
   const now = (deps.now ?? Date.now)();
   if (!force && site.security_checked_at && now - site.security_checked_at < AUDIT_EVERY) return null;
 
-  const result = await (deps.audit ?? auditSecurity)(site.url);
+  const result = await (deps.audit ?? auditSecurity)(site.url, fetch, siteHeaders(site));
   if (result.error) {
-    // Site inacessível: a queda já é tratada pela checagem HTTP; não muda a nota.
-    db.prepare('UPDATE sites SET security_checked_at = ? WHERE id = ?').run(now, site.id);
+    // Site inacessível ou barrado por desafio: não muda a nota, mas registra o motivo para o painel.
+    db.prepare('UPDATE sites SET security_checked_at = ?, security_error = ? WHERE id = ?').run(
+      now,
+      result.error,
+      site.id,
+    );
     return null;
   }
 
@@ -95,11 +99,9 @@ export async function runSecurityAudit(
     JSON.stringify(result.passed),
     JSON.stringify(result.scriptHosts),
   );
-  db.prepare('UPDATE sites SET security_score = ?, security_checked_at = ? WHERE id = ?').run(
-    score,
-    now,
-    site.id,
-  );
+  db.prepare(
+    'UPDATE sites SET security_score = ?, security_checked_at = ?, security_error = NULL WHERE id = ?',
+  ).run(score, now, site.id);
   db.prepare(
     `DELETE FROM audits WHERE site_id = ? AND id NOT IN
        (SELECT id FROM audits WHERE site_id = ? ORDER BY at DESC, id DESC LIMIT ?)`,

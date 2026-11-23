@@ -122,12 +122,23 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
                 className="flex min-w-0 flex-1 items-center gap-3 text-left"
                 aria-expanded={open === site.id}
               >
-                <StatusDot status={site.enabled ? site.status : 'paused'} />
+                <StatusDot
+                  status={
+                    !site.enabled
+                      ? 'paused'
+                      : site.status === 'up' && site.last_challenge
+                        ? 'limited'
+                        : site.status
+                  }
+                />
                 <div className="min-w-0">
                   <div className="truncate font-medium">{site.name}</div>
                   <div className="truncate text-xs text-zinc-500">
                     {hostOf(site.url)} · {site.enabled ? relativeTime(site.last_checked_at) : 'pausado'}
                     {site.status === 'down' && site.last_error ? ` · ${site.last_error}` : ''}
+                    {site.status === 'up' && site.last_challenge
+                      ? ` · conteúdo não verificável: firewall (${site.last_challenge})`
+                      : ''}
                   </div>
                 </div>
               </button>
@@ -214,11 +225,21 @@ function Summary({ label, value, tone }: { label: string; value: number; tone?: 
   );
 }
 
-function StatusDot({ status }: { status: Site['status'] | 'paused' }) {
-  const color = { up: 'bg-emerald-400', down: 'bg-red-500', unknown: 'bg-zinc-500', paused: 'bg-zinc-700' }[
-    status
-  ];
-  const label = { up: 'No ar', down: 'Fora do ar', unknown: 'Aguardando', paused: 'Pausado' }[status];
+function StatusDot({ status }: { status: Site['status'] | 'paused' | 'limited' }) {
+  const color = {
+    up: 'bg-emerald-400',
+    limited: 'bg-emerald-400 ring-2 ring-amber-400/70',
+    down: 'bg-red-500',
+    unknown: 'bg-zinc-500',
+    paused: 'bg-zinc-700',
+  }[status];
+  const label = {
+    up: 'No ar',
+    limited: 'No ar (conteúdo não verificado: desafio anti-bot)',
+    down: 'Fora do ar',
+    unknown: 'Aguardando',
+    paused: 'Pausado',
+  }[status];
   return (
     <span className="relative flex size-3 shrink-0" title={label}>
       {status === 'down' && (

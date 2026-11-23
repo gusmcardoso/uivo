@@ -17,6 +17,9 @@ export interface Site {
   security_checked_at: number | null;
   script_hosts: string | null;
   last_timing: string | null;
+  last_challenge: string | null;
+  custom_headers: string | null;
+  security_error: string | null;
   status: SiteStatus;
   fail_streak: number;
   last_checked_at: number | null;
@@ -121,6 +124,10 @@ function migrate(db: DatabaseSync): void {
     db.exec('ALTER TABLE sites ADD COLUMN security_checked_at INTEGER');
   if (!columns.has('script_hosts')) db.exec('ALTER TABLE sites ADD COLUMN script_hosts TEXT');
   if (!columns.has('last_timing')) db.exec('ALTER TABLE sites ADD COLUMN last_timing TEXT');
+  // v0.1.5: desafio anti-bot da última checagem e cabeçalhos de liberação (valores nunca saem pela API)
+  if (!columns.has('last_challenge')) db.exec('ALTER TABLE sites ADD COLUMN last_challenge TEXT');
+  if (!columns.has('custom_headers')) db.exec('ALTER TABLE sites ADD COLUMN custom_headers TEXT');
+  if (!columns.has('security_error')) db.exec('ALTER TABLE sites ADD COLUMN security_error TEXT');
 
   // v0.4: tempo de cada etapa por checagem (nulo nas checagens antigas)
   const checkColumns = new Set(
@@ -128,5 +135,16 @@ function migrate(db: DatabaseSync): void {
   );
   for (const col of ['redirect_ms', 'dns_ms', 'connect_ms', 'tls_ms', 'wait_ms', 'download_ms', 'bytes']) {
     if (!checkColumns.has(col)) db.exec(`ALTER TABLE checks ADD COLUMN ${col} INTEGER`);
+  }
+  if (!checkColumns.has('challenge')) db.exec('ALTER TABLE checks ADD COLUMN challenge TEXT');
+}
+
+/** Cabeçalhos de liberação do site (JSON guardado no banco); objeto vazio se não houver. */
+export function siteHeaders(site: Pick<Site, 'custom_headers'>): Record<string, string> {
+  if (!site.custom_headers) return {};
+  try {
+    return JSON.parse(site.custom_headers) as Record<string, string>;
+  } catch {
+    return {};
   }
 }

@@ -1,7 +1,8 @@
-import http from 'node:http';
+import http, { type IncomingHttpHeaders } from 'node:http';
 import https from 'node:https';
 import type { Socket } from 'node:net';
 import zlib from 'node:zlib';
+import { detectChallenge } from './challenge.ts';
 
 /** Duração de cada etapa da requisição, em milissegundos. */
 export interface Timings {
@@ -28,11 +29,19 @@ export interface HttpResult {
   encoding?: string | null;
   redirects?: number;
   finalUrl?: string | null;
+  /**
+   * Provedor do desafio anti-bot (ex.: "Vercel", "Cloudflare") quando a página veio barrada.
+   * Nesse caso DNS, TCP, TLS e a resposta do servidor foram confirmados (ok = true), mas o
+   * conteúdo não pôde ser lido nem a palavra-chave verificada.
+   */
+  challenge?: string | null;
 }
 
 export interface HttpOptions {
   keyword?: string | null;
   timeoutMs?: number;
+  /** Cabeçalhos extras (ex.: segredo de liberação no firewall do site). */
+  headers?: Record<string, string>;
 }
 
 const USER_AGENT = 'Uptrue/0.1 (+https://github.com/gusmcardoso/uptrue)';
@@ -43,6 +52,8 @@ const MAX_BYTES = 5 * 1024 * 1024;
 const KEYWORD_BYTES = 2 * 1024 * 1024;
 /** Teto da descompressão: impede que uma "bomba de compressão" esgote a memória do monitor. */
 const MAX_DECODED = 10 * 1024 * 1024;
+/** Em respostas de erro, guarda o começo do corpo para reconhecer páginas de desafio. */
+const ERROR_BODY_BYTES = 64 * 1024;
 
 interface Hop {
   status: number;
@@ -55,6 +66,7 @@ interface Hop {
   download: number;
   bytes: number;
   body: Buffer;
+  headers: IncomingHttpHeaders;
 }
 
 class CheckError extends Error {
@@ -69,7 +81,12 @@ class CheckError extends Error {
  * Um salto HTTP numa conexão nova (agent: false), para medir DNS, TCP e TLS de verdade:
  * com conexão reaproveitada, essas etapas apareceriam como zero.
  */
-function hop(url: URL, keepBody: boolean, deadline: number): Promise<Hop> {
+function hop(
+  url: URL,
+  keepBody: boolean,
+  deadline: number,
+  extraHeaders: Record<string, string> = {},
+): Promise<Hop> {
   return new Promise((resolve, reject) => {
     const client = url.protocol === 'https:' ? https : http;
     const t0 = performance.now();
@@ -80,7 +97,12 @@ function hop(url: URL, keepBody: boolean, deadline: number): Promise<Hop> {
     const req = client.request(url, {
       method: 'GET',
       agent: false,
-      headers: { 'user-agent': USER_AGENT, accept: 'text/html,*/*', 'accept-encoding': 'gzip, deflate, br' },
+      headers: {
+        'user-agent': USER_AGENT,
+        accept: 'text/html,*/*',
+        'accept-encoding': 'gzip, deflate, br',
+        ...extraHeaders,
+      },
     });
     const timer = setTimeout(
       () => req.destroy(new CheckError('TIMEOUT')),
@@ -124,10 +146,21 @@ function hop(url: URL, keepBody: boolean, deadline: number): Promise<Hop> {
       if (status >= 300 && status < 400 && location) {
         clearTimeout(timer);
         res.destroy();
-        resolve({ status, location, encoding, ...phases(), download: 0, bytes: 0, body: Buffer.alloc(0) });
+        resolve({
+          status,
+          location,
+          encoding,
+          ...phases(),
+          download: 0,
+          bytes: 0,
+          body: Buffer.alloc(0),
+          headers: res.headers,
+        });
         return;
       }
 
+      // Palavra-chave: guarda até 2 MB; respostas de erro: o começo, para reconhecer desafios.
+      const keepLimit = keepBody ? KEYWORD_BYTES : status >= 400 ? ERROR_BODY_BYTES : 0;
       let bytes = 0;
       let kept = 0;
       const chunks: Buffer[] = [];
@@ -144,11 +177,12 @@ function hop(url: URL, keepBody: boolean, deadline: number): Promise<Hop> {
           download: performance.now() - tResponse,
           bytes,
           body: Buffer.concat(chunks),
+          headers: res.headers,
         });
       };
       res.on('data', (chunk: Buffer) => {
         bytes += chunk.length;
-        if (keepBody && kept < KEYWORD_BYTES) {
+        if (kept < keepLimit) {
           chunks.push(chunk);
           kept += chunk.length;
         }
@@ -206,7 +240,7 @@ export async function checkHttp(url: string, options: HttpOptions = {}): Promise
   try {
     for (;;) {
       const hopStart = performance.now();
-      const h = await hop(current, Boolean(options.keyword), deadline);
+      const h = await hop(current, Boolean(options.keyword), deadline, options.headers);
 
       if (h.location && h.status >= 300 && h.status < 400) {
         if (redirects >= MAX_REDIRECTS) {
@@ -237,8 +271,17 @@ export async function checkHttp(url: string, options: HttpOptions = {}): Promise
         download: round(h.download),
         total: round(performance.now() - start),
       };
+      const header = (name: string) => {
+        const v = h.headers[name];
+        return Array.isArray(v) ? v.join(', ') : v;
+      };
+      // Verificação em camadas: um desafio anti-bot reconhecido prova que DNS, TCP, TLS (com
+      // certificado válido) e o servidor responderam; só o conteúdo fica sem verificação.
+      const challenge =
+        h.status >= 400 ? detectChallenge(h.status, header, decode(h.body, h.encoding)) : null;
       let error: string | null = null;
-      if (h.status < 200 || h.status >= 300) error = `HTTP ${h.status}`;
+      if (challenge) error = null;
+      else if (h.status < 200 || h.status >= 300) error = `HTTP ${h.status}`;
       else if (options.keyword && !decode(h.body, h.encoding).includes(options.keyword)) {
         error = `Palavra-chave "${options.keyword}" não encontrada`;
       }
@@ -252,6 +295,7 @@ export async function checkHttp(url: string, options: HttpOptions = {}): Promise
         encoding: h.encoding || null,
         redirects,
         finalUrl: current.href,
+        challenge,
       };
     }
   } catch (err) {
