@@ -10,7 +10,7 @@ O projeto está em **desenvolvimento** (`0.x`). As versões seguem `v0.MINOR.PAT
 | **MINOR** | `v0.1.x` → `v0.2.0` | Só em upgrade significativo (mudança grande de escopo ou de arquitetura) |
 | **1.0.0** | | Quando estiver estável para uso em produção por terceiros |
 
-Cada tag `v*` passa pelo CI completo e publica a imagem `ghcr.io/gusmcardoso/uptrue:<versão>`;
+Cada tag `v*` passa pelo CI completo e publica `ghcr.io/gusmcardoso/uptrue:<versão>` e `:0.<minor>` (sempre a última da série);
 a `main` publica `:latest`. Tags publicadas não são movidas: correção vira uma versão nova.
 
 ## Branches
