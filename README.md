@@ -81,6 +81,34 @@ Abra um site no painel e vá na aba **Segurança**: nota, achados ordenados por 
 
 Achados graves **novos** vão para o Telegram; o mesmo achado não é repetido no dia seguinte. Se você mesmo adicionou um script (analytics, chat), clique em **Aceitar scripts atuais**.
 
+### Observabilidade completa (Grafana)
+
+Um comando sobe a pilha inteira, já configurada, com dashboards prontos:
+
+```bash
+# no .env: METRICS_TOKEN e GRAFANA_ADMIN_PASSWORD
+docker compose --profile observability up -d    # Grafana em http://localhost:3001
+```
+
+| Serviço | Papel |
+| --- | --- |
+| Prometheus | Coleta as métricas do Uptrue, da máquina e dos containers (retenção de 15 dias) |
+| node_exporter | CPU, memória, disco e rede do servidor |
+| cAdvisor | Consumo de cada container |
+| Loki + Alloy | Logs de todos os containers; os eventos do Uptrue ganham o rótulo `event` |
+| Grafana | Três dashboards provisionados: **Sites**, **Servidor** e **Containers** |
+
+![Dashboard de sites no Grafana](docs/grafana.webp)
+
+Segurança: só o Grafana é publicado, e em `127.0.0.1` (para acesso externo, coloque um proxy reverso com HTTPS na frente); Prometheus, Loki e Alloy ficam na rede interna; o token do `/metrics` e a senha do Grafana entram como *secrets* do compose, lidos do `.env`; cadastro público, acesso anônimo e telemetria do Grafana desligados.
+
+Limitações conhecidas:
+
+- o cAdvisor precisa de modo privilegiado e do namespace de cgroup do host; o Alloy lê o socket do Docker. É o padrão dessas ferramentas, mas dá a elas acesso amplo à máquina;
+- no **Docker Desktop via WSL**, o painel de containers fica vazio: os caminhos montados vêm da distro, não da VM onde o Docker roda. Num servidor Linux funciona normalmente.
+
+`scripts/test-observability.sh` sobe a pilha e confere cada parte: alvos do Prometheus, fontes de dados, dashboards, **cada consulta de cada painel**, logs e eventos no Loki e o que fica exposto. Ele roda no CI a cada push.
+
 ### Eventos para o Loki
 
 Incidentes e achados de segurança saem como **JSON estruturado** no log do container (`"event":"incident.opened"`, `"incident.resolved"`, `"security.finding"`). Com Grafana Alloy (ou Promtail) coletando os logs do Docker, eles chegam ao Loki e aparecem no Grafana ao lado das métricas.
@@ -127,7 +155,7 @@ npm run lint && npm run typecheck
 | Qualidade | Biome, `tsc`, `node:test` |
 | Entrega | Docker multi-stage sem root, GitHub Actions, imagem multi-arquitetura no GHCR, Dependabot |
 
-**Pipeline** (a cada push e pull request): lint, tipos, testes e build; depois sobe a imagem com `docker compose` e faz um teste de ponta a ponta (painel, API protegida, cadastro, o Uptrue monitorando a si mesmo, página de status, `/metrics` com token, container sem root); na `main` e em tags `v*`, publica a imagem `amd64` + `arm64` no GHCR.
+**Pipeline** (a cada push e pull request): lint, tipos, testes e build; a pilha de observabilidade sobe inteira e cada painel é consultado; depois sobe a imagem com `docker compose` e faz um teste de ponta a ponta (painel, API protegida, cadastro, o Uptrue monitorando a si mesmo, página de status, `/metrics` com token, container sem root); na `main` e em tags `v*`, publica a imagem `amd64` + `arm64` no GHCR.
 
 ### Roadmap
 
@@ -135,7 +163,7 @@ npm run lint && npm run typecheck
 - [x] **v0.2**: página de status pública e `/metrics` para Prometheus/Grafana
 - [x] **v0.3**: auditoria de segurança, detecção de adulteração, nota de saúde e eventos para o Loki
 - [x] **v0.4**: tempo por etapa (DNS, conexão, TLS, servidor, download), percentis e diagnóstico
-- [ ] Perfil de observabilidade: Prometheus + Grafana + Loki + node_exporter + cAdvisor com dashboards prontos
+- [x] **v0.5**: perfil de observabilidade (Prometheus, Grafana, Loki, Alloy, node_exporter, cAdvisor) com dashboards prontos e testados no CI
 - [ ] Descoberta automática de sites pelo Traefik e por labels do Docker
 - [ ] Alerta no WhatsApp (opcional)
 - [ ] **v0.3**: regressão visual (print diário comparado com o anterior)
@@ -152,7 +180,7 @@ npm run lint && npm run typecheck
 - **Quick start:** grab `compose.yml` and `.env.example`, set `AUTH_SECRET`, run `docker compose up -d`, then open `http://localhost:3000` and create the admin account.
 - **Images:** multi-arch (`amd64`, `arm64`) on `ghcr.io/gusmcardoso/uptrue`.
 - **Stack:** Node 24 + TypeScript + Fastify, built-in `node:sqlite`, React + Vite + Tailwind.
-- **Status:** v0.4: per-phase timing (DNS, connect, TLS, server wait, download) with percentiles and diagnosis, security audit and health score, public status page at `/status`, Prometheus endpoint at `/metrics`, structured JSON events for Loki. The UI is in Brazilian Portuguese for now; English UI is on the roadmap. Contributions are welcome.
+- **Status:** v0.5: one-command observability profile (Prometheus, Grafana, Loki, Alloy, node_exporter, cAdvisor) with provisioned dashboards; v0.4: per-phase timing (DNS, connect, TLS, server wait, download) with percentiles and diagnosis, security audit and health score, public status page at `/status`, Prometheus endpoint at `/metrics`, structured JSON events for Loki. The UI is in Brazilian Portuguese for now; English UI is on the roadmap. Contributions are welcome.
 
 Licensed under **AGPL-3.0**: free to use, modify and self-host; if you offer a modified version as a network service, you must publish its source.
 

@@ -1,0 +1,28 @@
+# Prometheus do perfil "observability" (docker compose --profile observability up -d)
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+scrape_configs:
+  # Uptrue: /metrics protegido por token; o token chega como secret do compose (nunca versionado)
+  - job_name: uptrue
+    scrape_interval: 60s
+    authorization:
+      type: Bearer
+      credentials_file: /run/secrets/uptrue_metrics_token
+    static_configs:
+      - targets: ["uptrue:3000"]
+
+  # A máquina: CPU, memória, disco e rede
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # Consumo de cada container
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

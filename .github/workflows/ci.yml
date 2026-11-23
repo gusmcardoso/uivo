@@ -103,10 +103,28 @@ jobs:
         if: always()
         run: docker compose down -v
 
+  # ─────────── 2b. Observabilidade: Prometheus, Grafana, Loki, Alloy, node_exporter, cAdvisor ───────────
+  observability:
+    name: Observabilidade (pilha completa + cada painel)
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar configurações com as ferramentas oficiais
+        run: |
+          set -euo pipefail
+          echo token > /tmp/token
+          docker run --rm --entrypoint promtool -v "$PWD/observability/prometheus:/etc/prometheus:ro"             -v /tmp/token:/run/secrets/uptrue_metrics_token:ro prom/prometheus:v3.5.0 check config /etc/prometheus/prometheus.yml
+          docker run --rm -v "$PWD/observability/loki:/etc/loki:ro" grafana/loki:3.5.3 -config.file=/etc/loki/loki.yml -verify-config
+          docker run --rm -v "$PWD/observability/alloy:/etc/alloy:ro" grafana/alloy:v1.10.0 fmt /etc/alloy/config.alloy > /dev/null
+          for f in observability/grafana/dashboards/*.json; do jq -e '.uid and (.panels | length > 0)' "$f" > /dev/null; done
+      - name: Subir a pilha e testar cada painel
+        run: scripts/test-observability.sh
+
   # ─────────────── 3. Publicar imagem multi-arquitetura no GHCR ───────────────
   publish:
     name: Publicar imagem (GHCR, amd64 + arm64)
-    needs: docker
+    needs: [docker, observability]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
