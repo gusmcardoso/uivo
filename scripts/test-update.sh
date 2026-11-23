@@ -56,6 +56,7 @@ out=$(./update.sh 9.9.9 2>&1); code=$?
 ok "recusada com erro" "$([ $code != 0 ] && echo true)"
 ok "continua na $TO" "$([ "$(running_tag)" = "$TO" ] && echo true || running_tag)"
 ok "compose.yml e .env intactos" "$([ ! -f compose.yml.bak ] && grep -qx "UPTRUE_TAG=$TO" .env && echo true)"
+ok "nenhum backup feito para versão inexistente" "$([ "$(ls "$BACKUP_DIR"/uptrue-*.db.gz | wc -l)" = 1 ] && echo true || ls "$BACKUP_DIR")"
 out=$(./update.sh 'abc;rm -rf /' 2>&1); code=$?
 ok "versão com formato inválido recusada" "$([ $code != 0 ] && echo "$out" | grep -q 'versão inválida' && echo true)"
 

@@ -57,25 +57,23 @@ wait_healthy() {
   return 1
 }
 
-# 1. Backup antes de qualquer mudança (só se já houver um Uptrue rodando)
+# 1. Confere que a versão existe ANTES de mexer em qualquer coisa (versão inválida = nada muda)
+tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
+curl -fsSL "https://raw.githubusercontent.com/${REPO}/v${target}/compose.yml" -o "$tmp" ||
+  die "não encontrei o compose.yml da versão $target (a tag v$target existe?); nada foi alterado"
+docker compose -f "$tmp" --env-file .env config -q || die "compose.yml da versão $target inválido; nada foi alterado"
+# imagem baixada antes de parar o container atual: se falhar aqui, nada muda
+docker pull -q "$IMAGE:$target" >/dev/null || die "imagem $IMAGE:$target não encontrada; nada foi alterado"
+
+# 2. Backup (só se já houver um Uptrue rodando)
 if [ -x ./backup.sh ] && [ -n "$(docker compose ps -q uptrue 2>/dev/null)" ]; then
   ./backup.sh || die "backup falhou; atualização cancelada (nada foi alterado)"
 fi
 
-# 2. compose.yml da versão alvo, validado antes de substituir o atual
-tmp=$(mktemp)
-trap 'rm -f "$tmp"' EXIT
-curl -fsSL "https://raw.githubusercontent.com/${REPO}/v${target}/compose.yml" -o "$tmp" ||
-  die "não encontrei o compose.yml da versão $target (a tag v$target existe?)"
-docker compose -f "$tmp" --env-file .env config -q || die "compose.yml da versão $target inválido"
+# 3. Troca: guarda o estado atual para o rollback e aplica a versão nova
 cp compose.yml compose.yml.bak
 cp .env .env.bak
-
-# 3. Nova imagem (baixa antes de parar o container atual: se falhar aqui, nada muda)
-docker pull -q "$IMAGE:$target" >/dev/null || {
-  rm -f compose.yml.bak .env.bak
-  die "imagem $IMAGE:$target não encontrada; nada foi alterado"
-}
 cp "$tmp" compose.yml
 set_tag "$target"
 docker compose up -d --no-build --remove-orphans uptrue >/dev/null 2>&1 || true

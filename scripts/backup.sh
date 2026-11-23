@@ -9,7 +9,8 @@ cd "$(dirname "$0")" || exit 1
 
 DEST="${BACKUP_DIR:-/opt/backups/uptrue}"
 KEEP_DAYS="${KEEP_DAYS:-14}"
-STAMP=$(date +%Y-%m-%d_%H%M%S)
+# nanossegundos no nome: dois backups no mesmo segundo nunca colidem (e nada é sobrescrito)
+STAMP=$(date +%Y-%m-%d_%H%M%S_%N)
 FILE="uptrue-$STAMP.db"
 mkdir -p "$DEST"
 chmod 700 "$DEST"
