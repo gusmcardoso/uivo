@@ -147,7 +147,6 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,format=short
             type=semver,pattern={{version}}
-            # :0.1 aponta sempre para a última 0.1.x publicada
             type=semver,pattern={{major}}.{{minor}}
       - uses: docker/build-push-action@v7
         with:
