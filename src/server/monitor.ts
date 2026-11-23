@@ -36,9 +36,40 @@ export async function runSiteCheck(site: Site, deps: MonitorDeps): Promise<HttpR
   const result = await (deps.http ?? checkHttp)(site.url, { keyword: site.keyword });
   const now = (deps.now ?? Date.now)();
 
+  const t = result.timings ?? null;
   db.prepare(
-    'INSERT INTO checks (site_id, at, ok, status_code, response_ms, error) VALUES (?, ?, ?, ?, ?, ?)',
-  ).run(site.id, now, result.ok ? 1 : 0, result.statusCode, result.responseMs, result.error);
+    `INSERT INTO checks (site_id, at, ok, status_code, response_ms, error,
+       redirect_ms, dns_ms, connect_ms, tls_ms, wait_ms, download_ms, bytes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    site.id,
+    now,
+    result.ok ? 1 : 0,
+    result.statusCode,
+    result.responseMs,
+    result.error,
+    t?.redirect ?? null,
+    t?.dns ?? null,
+    t?.connect ?? null,
+    t?.tls ?? null,
+    t?.wait ?? null,
+    t?.download ?? null,
+    result.bytes ?? null,
+  );
+  if (t) {
+    db.prepare('UPDATE sites SET last_timing = ? WHERE id = ?').run(
+      JSON.stringify({
+        at: now,
+        statusCode: result.statusCode,
+        timings: t,
+        bytes: result.bytes ?? null,
+        encoding: result.encoding ?? null,
+        redirects: result.redirects ?? 0,
+        finalUrl: result.finalUrl ?? null,
+      }),
+      site.id,
+    );
+  }
 
   if (result.ok) {
     if (site.status === 'down') {

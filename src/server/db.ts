@@ -16,6 +16,7 @@ export interface Site {
   security_score: number | null;
   security_checked_at: number | null;
   script_hosts: string | null;
+  last_timing: string | null;
   status: SiteStatus;
   fail_streak: number;
   last_checked_at: number | null;
@@ -119,4 +120,13 @@ function migrate(db: DatabaseSync): void {
   if (!columns.has('security_checked_at'))
     db.exec('ALTER TABLE sites ADD COLUMN security_checked_at INTEGER');
   if (!columns.has('script_hosts')) db.exec('ALTER TABLE sites ADD COLUMN script_hosts TEXT');
+  if (!columns.has('last_timing')) db.exec('ALTER TABLE sites ADD COLUMN last_timing TEXT');
+
+  // v0.4: tempo de cada etapa por checagem (nulo nas checagens antigas)
+  const checkColumns = new Set(
+    (db.prepare('PRAGMA table_info(checks)').all() as { name: string }[]).map((c) => c.name),
+  );
+  for (const col of ['redirect_ms', 'dns_ms', 'connect_ms', 'tls_ms', 'wait_ms', 'download_ms', 'bytes']) {
+    if (!checkColumns.has(col)) db.exec(`ALTER TABLE checks ADD COLUMN ${col} INTEGER`);
+  }
 }

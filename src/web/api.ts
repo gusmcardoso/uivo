@@ -36,11 +36,31 @@ export interface SitePayload {
   public: boolean;
 }
 
-export interface CheckPoint {
+export type Phase = 'redirect' | 'dns' | 'connect' | 'tls' | 'wait' | 'download';
+export type PhaseTimes = Record<Phase, number | null>;
+
+export interface CheckPoint extends PhaseTimes {
   t: number;
   ms: number;
   ok: number;
   n: number;
+}
+
+export interface TimingSummary {
+  samples: number;
+  p50: number | null;
+  p95: number | null;
+  p99: number | null;
+  average: (PhaseTimes & { bytes: number | null }) | null;
+  last: {
+    at: number;
+    statusCode: number | null;
+    timings: Record<Phase | 'total', number>;
+    bytes: number | null;
+    encoding: string | null;
+    redirects: number;
+    finalUrl: string | null;
+  } | null;
 }
 
 export interface Incident {
@@ -112,5 +132,7 @@ export const api = {
   acceptScripts: (id: number) =>
     request<SecurityAudit>('POST', `/api/sites/${id}/security/accept-scripts`, {}),
   publicStatus: () => request<PublicStatus>('GET', '/api/public/status'),
+  timing: (id: number, range: string) =>
+    request<TimingSummary>('GET', `/api/sites/${id}/timing?range=${range}`),
   incidents: (id: number) => request<Incident[]>('GET', `/api/sites/${id}/incidents`),
 };

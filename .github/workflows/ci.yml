@@ -85,6 +85,8 @@ jobs:
           curl -fsS -H "Authorization: Bearer $METRICS_TOKEN" $B/metrics | grep -q 'uptrue_security_score{site="Uptrue"'
           # eventos estruturados em JSON no log (prontos para o Loki)
           docker compose logs uptrue | grep -q '"event":"security.finding"'
+          # tempo por etapa: a checagem grava DNS/conexão/espera/download e a API devolve percentis
+          curl -fsS -b jar "$B/api/sites/$id/timing?range=24h" | jq -e '.samples >= 1 and .p50 != null and .last.timings.wait >= 0'
           # container sem root
           test "$(docker compose exec -T uptrue id -u)" != "0"
 

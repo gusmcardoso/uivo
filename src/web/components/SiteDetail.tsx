@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import uPlot from 'uplot';
-import { api, type CheckPoint, type Incident, type Site } from '../api.ts';
+import { api, type CheckPoint, type Incident, type Site, type TimingSummary } from '../api.ts';
 import { dateTime, duration, formatUptime } from '../format.ts';
 import { SecurityPanel } from './SecurityPanel.tsx';
+import { LastCheck, PhaseChart } from './TimingPanel.tsx';
 
 const RANGES = [
   { key: '24h', label: '24 h' },
@@ -122,6 +123,7 @@ function Performance({ site }: { site: Site }) {
   const [range, setRange] = useState('24h');
   const [points, setPoints] = useState<CheckPoint[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [timing, setTiming] = useState<TimingSummary | null>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: recarrega a cada nova checagem do site
   useEffect(() => {
@@ -129,6 +131,10 @@ function Performance({ site }: { site: Site }) {
       .checks(site.id, range)
       .then(setPoints)
       .catch(() => setPoints([]));
+    api
+      .timing(site.id, range)
+      .then(setTiming)
+      .catch(() => setTiming(null));
     api
       .incidents(site.id)
       .then(setIncidents)
@@ -145,6 +151,16 @@ function Performance({ site }: { site: Site }) {
           <Stat label="Uptime 7 dias" value={formatUptime(site.uptime_7d)} />
           <Stat label="Uptime 30 dias" value={formatUptime(site.uptime_30d)} />
           <Stat label="Resposta média" value={avg === null ? '—' : `${avg} ms`} />
+          <Stat
+            label="p95"
+            value={timing?.p95 == null ? '—' : `${timing.p95} ms`}
+            hint="95% das respostas foram mais rápidas que isso"
+          />
+          <Stat
+            label="p99"
+            value={timing?.p99 == null ? '—' : `${timing.p99} ms`}
+            hint="O pior caso de 1 em cada 100 acessos"
+          />
         </div>
         <div className="flex rounded-lg bg-zinc-950 p-1">
           {RANGES.map((r) => (
@@ -159,7 +175,12 @@ function Performance({ site }: { site: Site }) {
           ))}
         </div>
       </div>
-      <ResponseChart points={points} />
+      {points.filter((p) => p.wait !== null).length >= 2 ? (
+        <PhaseChart points={points} />
+      ) : (
+        <ResponseChart points={points} />
+      )}
+      {timing?.last && <LastCheck timing={timing} />}
       <div>
         <h3 className="mb-2 text-sm font-medium text-zinc-300">Incidentes (90 dias)</h3>
         {incidents.length === 0 ? (
@@ -183,9 +204,9 @@ function Performance({ site }: { site: Site }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div>
+    <div title={hint}>
       <div className="text-xs text-zinc-500">{label}</div>
       <div className="font-semibold tabular-nums">{value}</div>
     </div>

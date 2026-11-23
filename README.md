@@ -30,6 +30,7 @@ Monitores tradicionais perguntam só *"o servidor respondeu?"*. O problema de qu
 | Recurso | Detalhe |
 | --- | --- |
 | Checagem HTTP | Status, tempo de resposta e redirecionamentos, de 30 s a 1 h por site |
+| **Onde o tempo foi gasto** | Cada checagem mede redirecionamentos, DNS, conexão, TLS, espera do servidor e download; gráfico em camadas, cascata da última checagem, p50/p95/p99, tamanho, compressão e um diagnóstico de qual etapa pesa mais e o que fazer (novo na v0.4) |
 | Palavra-chave | Opcional: só conta como no ar se o texto aparecer na página (pega página em branco com 200) |
 | Confirmação de queda | Só declara "fora do ar" após 2 falhas seguidas, sem alarme falso |
 | Certificado SSL | Dias até vencer, emissor e validade da cadeia; avisos com 14 e 3 dias |
@@ -63,6 +64,14 @@ Abra `http://localhost:3000` e crie a conta de administrador no primeiro acesso.
 | `CHECK_CONCURRENCY` | não | Checagens simultâneas (padrão 10) |
 | `STATUS_PAGE_TITLE` | não | Título da página de status pública (padrão "Status dos serviços") |
 | `METRICS_TOKEN` | não | Habilita o `/metrics` para o Prometheus (sem ele, o endpoint fica desligado) |
+
+### Onde o tempo foi gasto
+
+"Respondeu em 420 ms" não diz o que fazer. O Uptrue abre uma **conexão nova a cada checagem** (sem reaproveitar, para não mascarar DNS e TLS) e mede cada etapa separadamente. Se o servidor responde por mais de 40% do tempo, o painel diz isso e sugere o caminho (cache, CDN, DNS mais rápido, compressão).
+
+![Tempo por etapa](docs/tempo.webp)
+
+Proteções do cliente HTTP: no máximo 5 redirecionamentos, 5 MB de download medido, tempo limite valendo para a requisição inteira e teto de 10 MB na descompressão (uma "bomba de compressão" não derruba o monitor).
 
 ### Auditoria de segurança
 
@@ -125,10 +134,12 @@ npm run lint && npm run typecheck
 - [x] **v0.1**: HTTP, SSL, domínio, incidentes, painel, alertas no Telegram
 - [x] **v0.2**: página de status pública e `/metrics` para Prometheus/Grafana
 - [x] **v0.3**: auditoria de segurança, detecção de adulteração, nota de saúde e eventos para o Loki
+- [x] **v0.4**: tempo por etapa (DNS, conexão, TLS, servidor, download), percentis e diagnóstico
+- [ ] Perfil de observabilidade: Prometheus + Grafana + Loki + node_exporter + cAdvisor com dashboards prontos
 - [ ] Descoberta automática de sites pelo Traefik e por labels do Docker
 - [ ] Alerta no WhatsApp (opcional)
 - [ ] **v0.3**: regressão visual (print diário comparado com o anterior)
-- [ ] **v0.4**: navegador de verdade: erros de JavaScript, recursos quebrados e teste sintético (botão do WhatsApp, formulário)
+- [ ] Navegador de verdade: erros de JavaScript, recursos quebrados e teste sintético (botão do WhatsApp, formulário)
 - [ ] **v0.5**: relatório mensal em PDF para o cliente
 - [ ] Painel em inglês
 
@@ -141,7 +152,7 @@ npm run lint && npm run typecheck
 - **Quick start:** grab `compose.yml` and `.env.example`, set `AUTH_SECRET`, run `docker compose up -d`, then open `http://localhost:3000` and create the admin account.
 - **Images:** multi-arch (`amd64`, `arm64`) on `ghcr.io/gusmcardoso/uptrue`.
 - **Stack:** Node 24 + TypeScript + Fastify, built-in `node:sqlite`, React + Vite + Tailwind.
-- **Status:** v0.3: security audit and health score, public status page at `/status`, Prometheus endpoint at `/metrics`, structured JSON events for Loki. The UI is in Brazilian Portuguese for now; English UI is on the roadmap. Contributions are welcome.
+- **Status:** v0.4: per-phase timing (DNS, connect, TLS, server wait, download) with percentiles and diagnosis, security audit and health score, public status page at `/status`, Prometheus endpoint at `/metrics`, structured JSON events for Loki. The UI is in Brazilian Portuguese for now; English UI is on the roadmap. Contributions are welcome.
 
 Licensed under **AGPL-3.0**: free to use, modify and self-host; if you offer a modified version as a network service, you must publish its source.
 

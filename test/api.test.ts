@@ -152,3 +152,47 @@ describe('gráfico', () => {
     );
   });
 });
+
+describe('tempo por etapa (API)', () => {
+  it('devolve percentis, médias por etapa e a última checagem; queda não conta como lentidão', async () => {
+    const cookie = await setup();
+    const id = Number(
+      db.prepare("INSERT INTO sites (name, url, created_at) VALUES ('Loja', 'https://loja.com.br', 0)").run()
+        .lastInsertRowid,
+    );
+    const insert = db.prepare(
+      `INSERT INTO checks (site_id, at, ok, response_ms, redirect_ms, dns_ms, connect_ms, tls_ms, wait_ms, download_ms, bytes)
+       VALUES (?, ?, ?, ?, 0, 10, 20, 30, ?, 5, 1000)`,
+    );
+    const now = Date.now();
+    for (let i = 1; i <= 10; i++) insert.run(id, now - i * 60_000, 1, 60 + i * 10, i * 10);
+    insert.run(id, now - 30_000, 0, 15_000, 0); // queda (timeout): fora dos percentis
+    db.prepare('UPDATE sites SET last_timing = ? WHERE id = ?').run(
+      JSON.stringify({ timings: { dns: 10 }, encoding: 'br', redirects: 1 }),
+      id,
+    );
+
+    const t = (await app.inject({ url: `/api/sites/${id}/timing?range=24h`, headers: { cookie } })).json();
+    assert.equal(t.samples, 10);
+    assert.equal(t.p50, 110);
+    assert.equal(t.p95, 160);
+    assert.equal(t.average.dns, 10);
+    assert.equal(t.average.wait, 55);
+    assert.equal(t.last.encoding, 'br');
+
+    const points = (
+      await app.inject({ url: `/api/sites/${id}/checks?range=24h`, headers: { cookie } })
+    ).json();
+    assert.ok(points.every((p: { dns: number | null }) => p.dns === 10 || p.dns === null));
+  });
+
+  it('a lista de sites não expõe campos internos', async () => {
+    const cookie = await setup();
+    db.prepare(
+      "INSERT INTO sites (name, url, created_at, script_hosts, last_timing) VALUES ('X', 'https://x.com', 0, '[]', '{}')",
+    ).run();
+    const [site] = (await app.inject({ url: '/api/sites', headers: { cookie } })).json();
+    assert.equal(site.script_hosts, undefined);
+    assert.equal(site.last_timing, undefined);
+  });
+});

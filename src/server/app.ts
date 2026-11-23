@@ -176,7 +176,7 @@ export async function buildApp(options: AppOptions) {
          FROM sites s ORDER BY s.status = 'down' DESC, s.name COLLATE NOCASE`,
       )
       .all(now - DAY, now - 7 * DAY, now - 30 * DAY) as unknown as (Site & { uptime_7d: number | null })[];
-    return rows.map(({ script_hosts: _hosts, ...site }) => ({
+    return rows.map(({ script_hosts: _hosts, last_timing: _timing, ...site }) => ({
       ...site,
       health_score: healthScore(site, site.uptime_7d, now),
     }));
@@ -300,10 +300,47 @@ export async function buildApp(options: AppOptions) {
       const bucket = Math.max(60_000, Math.ceil(span / MAX_POINTS));
       return db
         .prepare(
-          `SELECT (at / CAST(? AS INTEGER)) * CAST(? AS INTEGER) AS t, ROUND(AVG(response_ms)) AS ms, MIN(ok) AS ok, COUNT(*) AS n
+          `SELECT (at / CAST(? AS INTEGER)) * CAST(? AS INTEGER) AS t, ROUND(AVG(response_ms)) AS ms, MIN(ok) AS ok, COUNT(*) AS n,
+             ROUND(AVG(redirect_ms)) AS redirect, ROUND(AVG(dns_ms)) AS dns, ROUND(AVG(connect_ms)) AS connect,
+             ROUND(AVG(tls_ms)) AS tls, ROUND(AVG(wait_ms)) AS wait, ROUND(AVG(download_ms)) AS download
            FROM checks WHERE site_id = ? AND at >= ? GROUP BY 1 ORDER BY 1`,
         )
         .all(bucket, bucket, Number(req.params.id), Date.now() - span);
+    },
+  );
+
+  app.get<{ Params: { id: string }; Querystring: { range?: string } }>(
+    '/api/sites/:id/timing',
+    { preHandler: requireAuth },
+    async (req, reply) => {
+      const site = getSite(db, Number(req.params.id));
+      if (!site) return reply.code(404).send({ error: 'Site não encontrado.' });
+      const span = RANGES[req.query.range ?? '24h'] ?? DAY;
+      const since = Date.now() - span;
+      // Percentis só das checagens com sucesso: queda não é "lentidão"
+      const values = (
+        db
+          .prepare(
+            'SELECT response_ms FROM checks WHERE site_id = ? AND at >= ? AND ok = 1 ORDER BY response_ms',
+          )
+          .all(site.id, since) as { response_ms: number }[]
+      ).map((r) => r.response_ms);
+      const phases = db
+        .prepare(
+          `SELECT ROUND(AVG(redirect_ms)) AS redirect, ROUND(AVG(dns_ms)) AS dns, ROUND(AVG(connect_ms)) AS connect,
+             ROUND(AVG(tls_ms)) AS tls, ROUND(AVG(wait_ms)) AS wait, ROUND(AVG(download_ms)) AS download,
+             ROUND(AVG(bytes)) AS bytes
+           FROM checks WHERE site_id = ? AND at >= ? AND ok = 1 AND wait_ms IS NOT NULL`,
+        )
+        .get(site.id, since);
+      return {
+        samples: values.length,
+        p50: percentile(values, 50),
+        p95: percentile(values, 95),
+        p99: percentile(values, 99),
+        average: phases,
+        last: site.last_timing ? JSON.parse(site.last_timing) : null,
+      };
     },
   );
 
@@ -338,4 +375,11 @@ export async function buildApp(options: AppOptions) {
   });
 
   return app;
+}
+
+/** Percentil pelo método do posto mais próximo; espera a lista já ordenada. */
+export function percentile(sorted: number[], p: number): number | null {
+  if (sorted.length === 0) return null;
+  const rank = Math.ceil((p / 100) * sorted.length);
+  return sorted[Math.min(sorted.length, Math.max(1, rank)) - 1];
 }
