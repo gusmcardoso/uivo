@@ -106,6 +106,47 @@ sudo mkdir -p /opt/backups && sudo chown "$USER": /opt/backups && chmod 700 /opt
 (crontab -l 2>/dev/null; echo "30 3 * * * /opt/uptrue/backup.sh >> /opt/backups/backup.log 2>&1") | crontab -
 ```
 
+### Restaurar
+
+```bash
+cd /opt/uptrue
+./restore.sh --list        # backups disponíveis
+./restore.sh --latest      # ou ./restore.sh uptrue-AAAA-MM-DD_....db.gz
+```
+
+Confere o gzip e a integridade antes, salva o estado atual (dá para desfazer), troca o banco
+removendo os arquivos WAL antigos, devolve o dono certo ao arquivo e confere saúde e número de sites.
+
+### Cópia externa criptografada (Object Storage da Oracle, 20 GB grátis)
+
+Um backup que fica na mesma máquina não protege contra perder a máquina. O `offsite-backup.sh`
+envia o backup mais recente por rclone, **criptografado antes de sair do servidor** (conteúdo e nomes).
+
+1. **No painel da Oracle:** *Storage → Buckets → Create bucket* (`uptrue-backups`, privado). Anote o
+   **Namespace** (na página do bucket). Em *Perfil → Customer secret keys → Generate*, guarde o
+   *Access key* e o *Secret* (o secret aparece uma vez só).
+2. **No servidor**, crie a configuração do rclone (troque NAMESPACE, ACCESS e SECRET):
+
+   ```bash
+   cd /opt/uptrue && mkdir -p rclone && chmod 700 rclone
+   rc() { docker run --rm -it --user "$(id -u):$(id -g)" -e RCLONE_CONFIG=/config/rclone.conf -v "$PWD/rclone:/config" rclone/rclone:1.69.1 "$@"; }
+   rc config create oci s3 provider=Other access_key_id=ACCESS secret_access_key=SECRET      endpoint=https://NAMESPACE.compat.objectstorage.sa-saopaulo-1.oraclecloud.com region=sa-saopaulo-1 force_path_style=true
+   SENHA=$(openssl rand -base64 32); echo "SENHA DO CRYPT (guarde no gerenciador de senhas): $SENHA"
+   rc config create offsite crypt remote=oci:uptrue-backups password="$SENHA" --obscure
+   chmod 600 rclone/rclone.conf
+   ```
+
+   **Guarde a senha do crypt fora do servidor** (gerenciador de senhas): sem ela, os backups
+   externos não podem ser lidos, e é justamente quando o servidor se perde que você vai precisar dela.
+3. Teste e agende junto com o backup local:
+
+   ```bash
+   ./offsite-backup.sh && ./offsite-backup.sh --list
+   (crontab -l | grep -v backup.sh; echo "30 3 * * * { /opt/uptrue/backup.sh && /opt/uptrue/offsite-backup.sh; } >> /opt/backups/backup.log 2>&1") | crontab -
+   ```
+
+Para recuperar de fora: `./offsite-backup.sh --fetch NOME` e depois `./restore.sh NOME`.
+
 ## 6. Atualização e deploy automático
 
 `/opt/uptrue/update.sh [versão]` faz backup, baixa o `compose.yml` da versão, troca a imagem,

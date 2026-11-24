@@ -162,6 +162,8 @@ O guia [docs/DEPLOY.md](docs/DEPLOY.md) cobre do zero: endurecimento do servidor
 | --- | --- |
 | `scripts/update.sh [versão]` | backup → nova versão → espera ficar saudável → **rollback automático** se não ficar |
 | `scripts/backup.sh` | cópia consistente do SQLite (`VACUUM INTO`), integridade conferida, compactada, 14 dias |
+| `scripts/restore.sh` | restaura um backup: valida antes, salva o estado atual, troca o banco com segurança e confere |
+| `scripts/offsite-backup.sh` | cópia **criptografada** para fora do servidor (rclone crypt; ex.: Object Storage da Oracle), 30 dias |
 | `scripts/deploy-entry.sh` | porta de entrada da chave de deploy: só aceita uma versão como comando |
 
 Cada tag `v*` que passa em todos os testes é publicada e instalada no servidor pelo workflow **Deploy**, que também permite instalar ou voltar uma versão à mão.
@@ -194,6 +196,7 @@ npm run lint && npm run typecheck
 - [x] **v0.1.1**: página de status pública e `/metrics` para Prometheus/Grafana
 - [x] **v0.1.2**: auditoria de segurança, detecção de adulteração, nota de saúde e eventos para o Loki
 - [x] **v0.1.3**: tempo por etapa (DNS, conexão, TLS, servidor, download), percentis e diagnóstico
+- [x] **v0.1.8**: `restore.sh` testado e cópia externa criptografada dos backups (rclone crypt), ambos simulados no CI
 - [x] **v0.1.7**: `update.sh` com backup e rollback automático, `backup.sh` testado, deploy automático por tag com chave restrita (comando forçado) e guia de deploy
 - [x] **v0.1.6**: `scripts/observability.sh` (check, init, up, status, down, logs) com testes e ShellCheck no CI
 - [x] **v0.1.5**: sites atrás de firewall: detecção de desafio anti-bot, verificação em camadas e cabeçalhos de liberação

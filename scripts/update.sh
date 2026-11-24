@@ -101,7 +101,7 @@ fi
 docker image prune -f >/dev/null 2>&1 || true
 
 # 6. Atualiza os próprios scripts de operação para os da versão instalada
-for s in update.sh backup.sh deploy-entry.sh; do
+for s in update.sh backup.sh restore.sh offsite-backup.sh deploy-entry.sh; do
   if curl -fsSL "https://raw.githubusercontent.com/${REPO}/v${target}/scripts/$s" -o "$tmp" 2>/dev/null && bash -n "$tmp"; then
     # grava ao lado e renomeia: troca atômica, sem mexer no arquivo que está em execução
     install -m 700 "$tmp" "./$s.new" && mv -f "./$s.new" "./$s"

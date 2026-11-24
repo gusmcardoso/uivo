@@ -132,6 +132,8 @@ jobs:
       - uses: actions/checkout@v7
       - name: Simular servidor e testar o update.sh
         run: bash scripts/test-update.sh
+      - name: Backup, restore e cópia externa criptografada
+        run: TAG=0.1.7 bash scripts/test-backup-restore.sh
 
   # ─────────────── 3. Publicar imagem multi-arquitetura no GHCR ───────────────
   publish:
