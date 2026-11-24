@@ -13,7 +13,7 @@ export function Footer({ className = '' }: { className?: string }) {
       </span>
       <a
         className="gm-credito"
-        href="https://portfolio-lime-ten-e15950afw3.vercel.app/"
+        href="https://gustavom.vercel.app/"
         target="_blank"
         rel="noopener"
         title="Gustavo Martins — Desenvolvimento web"
