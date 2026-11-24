@@ -24,6 +24,7 @@ services:
       RETENTION_DAYS: ${RETENTION_DAYS:-90}
       METRICS_TOKEN: ${METRICS_TOKEN:-}
       STATUS_PAGE_TITLE: ${STATUS_PAGE_TITLE:-}
+      REPORT_AUTHOR: ${REPORT_AUTHOR:-}
       TZ: ${TZ:-America/Sao_Paulo}
     volumes:
       - uptrue-data:/data

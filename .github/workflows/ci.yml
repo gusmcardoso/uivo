@@ -94,6 +94,10 @@ jobs:
           grep -q '"event":"security.finding"' <<< "$logs"
           # tempo por etapa: a checagem grava DNS/conexão/espera/download e a API devolve percentis
           curl -fsS -b jar "$B/api/sites/$id/timing?range=24h" | jq -e '.samples >= 1 and .p50 != null and .last.timings.wait >= 0'
+          # relatório em PDF gerado dentro do container (fontes do pdfkit presentes na imagem de produção)
+          month=$(date +%Y-%m)
+          curl -fsS -b jar -o relatorio.pdf "$B/api/reports/monthly?month=$month"
+          test "$(head -c 5 relatorio.pdf)" = "%PDF-"
           # container sem root
           test "$(docker compose exec -T uptrue id -u)" != "0"
 

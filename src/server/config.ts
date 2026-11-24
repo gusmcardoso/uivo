@@ -25,6 +25,7 @@ export const config = {
   concurrency: num(process.env.CHECK_CONCURRENCY, 10),
   metricsToken: process.env.METRICS_TOKEN || undefined,
   statusTitle: process.env.STATUS_PAGE_TITLE || 'Status dos serviços',
+  reportAuthor: process.env.REPORT_AUTHOR || undefined,
 };
 
 export type Config = typeof config;

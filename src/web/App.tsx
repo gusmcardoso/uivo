@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api, type Site } from './api.ts';
 import { Login } from './components/Login.tsx';
 import { Logo } from './components/Logo.tsx';
+import { ReportDialog } from './components/ReportDialog.tsx';
 import { scoreTone } from './components/SecurityPanel.tsx';
 import { SiteDetail } from './components/SiteDetail.tsx';
 import { SiteForm } from './components/SiteForm.tsx';
@@ -36,6 +37,7 @@ function Admin() {
 function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [sites, setSites] = useState<Site[] | null>(null);
   const [editing, setEditing] = useState<Site | 'new' | null>(null);
+  const [reporting, setReporting] = useState(false);
   const [open, setOpen] = useState<number | null>(null);
   const [checking, setChecking] = useState<number | null>(null);
 
@@ -86,6 +88,14 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         <div className="flex items-center gap-2">
           <button type="button" className="btn-primary" onClick={() => setEditing('new')}>
             + Adicionar site
+          </button>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => setReporting(true)}
+            disabled={!sites?.length}
+          >
+            Relatório
           </button>
           <a className="btn-ghost" href="/status" target="_blank" rel="noopener">
             Página de status
@@ -199,6 +209,8 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           </article>
         ))}
       </section>
+
+      {reporting && sites && <ReportDialog sites={sites} onClose={() => setReporting(false)} />}
 
       {editing && (
         <SiteForm

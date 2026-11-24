@@ -32,6 +32,7 @@ const app = await buildApp({
   webDir: path.join(root, 'dist', 'web'),
   metricsToken: config.metricsToken,
   statusTitle: config.statusTitle,
+  reportAuthor: config.reportAuthor,
   logger: true,
 });
 

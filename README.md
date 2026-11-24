@@ -42,6 +42,7 @@ Monitores tradicionais perguntam só *"o servidor respondeu?"*. O problema de qu
 | **Auditoria de segurança** | 1x ao dia: arquivos sensíveis expostos (`.env`, `.git`, backups, dumps SQL, `phpinfo`), cabeçalhos de segurança, HTTPS e redirecionamento, TLS obsoleto, conteúdo misto, listagem de diretório e versão do servidor exposta, cada achado com **como corrigir** (v0.1.2) |
 | **Detecção de adulteração** | Script externo de domínio novo na página ou termos típicos de invasão (\"hacked by\", spam de cassino) viram alerta (v0.1.2) |
 | **Nota de saúde 0–100** | Disponibilidade (40) + segurança (40) + validade de SSL e domínio (20) (v0.1.2) |
+| **Relatório mensal em PDF** | Por mês e sites escolhidos: nota de saúde, uptime dia a dia, quedas (cortadas na virada do mês), tempo de resposta, pendências de segurança e vencimentos, com aviso de **cobertura parcial** quando o monitor ficou parado. Gerado no servidor, sem navegador (v0.1.10) |
 | Página de status pública | `/status`, só com os sites marcados como públicos: estado atual e barras de 90 dias (v0.1.1) |
 | Métricas Prometheus | `/metrics` protegido por token, pronto para o Grafana (v0.1.1) |
 
@@ -196,6 +197,7 @@ npm run lint && npm run typecheck
 - [x] **v0.1.1**: página de status pública e `/metrics` para Prometheus/Grafana
 - [x] **v0.1.2**: auditoria de segurança, detecção de adulteração, nota de saúde e eventos para o Loki
 - [x] **v0.1.3**: tempo por etapa (DNS, conexão, TLS, servidor, download), percentis e diagnóstico
+- [x] **v0.1.10**: relatório mensal em PDF (botão **Relatório** no painel e `/api/reports/monthly`)
 - [x] **v0.1.9**: log do backup limpo, erros do backup externo em português e caminho completo no `--fetch`
 - [x] **v0.1.8**: `restore.sh` testado e cópia externa criptografada dos backups (rclone crypt), ambos simulados no CI
 - [x] **v0.1.7**: `update.sh` com backup e rollback automático, `backup.sh` testado, deploy automático por tag com chave restrita (comando forçado) e guia de deploy
@@ -206,7 +208,7 @@ npm run lint && npm run typecheck
 - [ ] Alerta no WhatsApp (opcional)
 - [ ] Regressão visual (print diário comparado com o anterior)
 - [ ] Navegador de verdade: erros de JavaScript, recursos quebrados e teste sintético (botão do WhatsApp, formulário)
-- [ ] Relatório mensal em PDF para o cliente
+- [ ] Envio automático do relatório todo dia 1 (Telegram/e-mail)
 - [ ] Painel em inglês
 
 ---

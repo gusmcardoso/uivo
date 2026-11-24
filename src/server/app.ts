@@ -17,6 +17,8 @@ import {
 import { getSite, type Site, siteHeaders } from './db.ts';
 import { healthScore } from './health.ts';
 import { registerPublicRoutes } from './public.ts';
+import { buildReport } from './report/data.ts';
+import { renderReport } from './report/pdf.ts';
 import { DAY, HOUR } from './util.ts';
 
 export interface AppOptions {
@@ -27,6 +29,8 @@ export interface AppOptions {
   webDir?: string;
   metricsToken?: string;
   statusTitle?: string;
+  /** Nome de quem prepara os relatórios (aparece na capa). */
+  reportAuthor?: string;
   logger?: boolean;
 }
 
@@ -189,6 +193,34 @@ export async function buildApp(options: AppOptions) {
       health_score: healthScore(site, site.uptime_7d, now),
     }));
   });
+
+  // ─── Relatório mensal (PDF) ───────────────────────────────────────────────
+  app.get<{ Querystring: { month?: string; sites?: string; title?: string } }>(
+    '/api/reports/monthly',
+    { preHandler: requireAuth, config: { rateLimit: { max: 20, timeWindow: '1 minute' } } },
+    async (req, reply) => {
+      const m = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(req.query.month ?? '');
+      if (!m || Number(m[1]) < 2020)
+        return reply.code(400).send({ error: 'Informe o mês no formato AAAA-MM.' });
+      const siteIds = (req.query.sites ?? '')
+        .split(',')
+        .map((v) => Number(v))
+        .filter((v) => Number.isInteger(v) && v > 0);
+      const data = buildReport(db, {
+        year: Number(m[1]),
+        month: Number(m[2]),
+        siteIds,
+        title: (req.query.title ?? '').slice(0, 120),
+        author: options.reportAuthor ?? null,
+      });
+      const pdf = await renderReport(data);
+      return reply
+        .header('content-type', 'application/pdf')
+        .header('content-disposition', `attachment; filename="relatorio-uptrue-${m[1]}-${m[2]}.pdf"`)
+        .header('cache-control', 'no-store')
+        .send(pdf);
+    },
+  );
 
   // ─── Segurança ────────────────────────────────────────────────────────────
   /** Última auditoria + o motivo, se a mais recente não pôde ser feita (ex.: desafio anti-bot). */

@@ -1,6 +1,6 @@
 {
   "name": "uptrue",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Monitor de saúde de sites: disponibilidade, SSL e vencimento de domínio, com alertas no Telegram.",
   "private": true,
   "type": "module",
@@ -22,12 +22,14 @@
     "@fastify/cookie": "^11.1.5",
     "@fastify/rate-limit": "^11.3.0",
     "@fastify/static": "^10.1.12",
-    "fastify": "^5.12.8"
+    "fastify": "^5.12.8",
+    "pdfkit": "^0.21.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.8",
     "@tailwindcss/vite": "^4.3.5",
     "@types/node": "^26.6.6",
+    "@types/pdfkit": "^0.17.7",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
