@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import uPlot from 'uplot';
 import { api, type CheckPoint, type Incident, type Site, type TimingSummary } from '../api.ts';
 import { dateTime, duration, formatUptime } from '../format.ts';
+import { BadgePanel } from './BadgePanel.tsx';
 import { type Hover, MomentTooltip } from './MomentTooltip.tsx';
 import { SecurityPanel } from './SecurityPanel.tsx';
 import { LastCheck, PhaseChart } from './TimingPanel.tsx';
@@ -114,21 +115,22 @@ function ResponseChart({ points, onHover }: { points: CheckPoint[]; onHover?: (h
 }
 
 export function SiteDetail({ site, onChange }: { site: Site; onChange: () => void }) {
-  const [tab, setTab] = useState<'perf' | 'security'>('perf');
+  const [tab, setTab] = useState<'perf' | 'security' | 'badge'>('perf');
   return (
-    <div className="border-t border-zinc-800">
-      <div className="flex gap-1 px-5 pt-4">
+    <div>
+      <div className="flex gap-1 border-b border-zinc-800/80 px-5 pt-2">
         {(
           [
             ['perf', 'Desempenho'],
             ['security', 'Segurança'],
+            ['badge', 'Selo'],
           ] as const
         ).map(([key, label]) => (
           <button
             key={key}
             type="button"
             onClick={() => setTab(key)}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium ${tab === key ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-white'}`}
+            className={`border-b-2 px-3 py-2 text-sm ${tab === key ? 'border-brand text-zinc-100' : 'border-transparent text-zinc-500 hover:text-zinc-200'}`}
           >
             {label}
           </button>
@@ -136,9 +138,13 @@ export function SiteDetail({ site, onChange }: { site: Site; onChange: () => voi
       </div>
       {tab === 'perf' ? (
         <Performance site={site} />
-      ) : (
+      ) : tab === 'security' ? (
         <div className="p-5">
           <SecurityPanel siteId={site.id} onChange={onChange} />
+        </div>
+      ) : (
+        <div className="p-5">
+          <BadgePanel site={site} onChange={onChange} />
         </div>
       )}
     </div>
@@ -175,7 +181,7 @@ function Performance({ site }: { site: Site }) {
   return (
     <div className="space-y-5 p-5">
       {site.last_challenge && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3.5 text-sm text-zinc-300">
+        <div className="rounded-sm border border-amber-500/30 bg-amber-500/5 p-3.5 text-sm text-zinc-300">
           <p className="font-medium text-amber-300">
             Conteúdo não verificável: o firewall ({site.last_challenge}) exige um navegador.
           </p>
@@ -189,7 +195,7 @@ function Performance({ site }: { site: Site }) {
         </div>
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-6 text-sm">
+        <div className="grid grid-cols-3 gap-x-6 gap-y-3 text-sm sm:flex">
           <Stat label="Uptime 24 h" value={formatUptime(site.uptime_24h)} />
           <Stat label="Uptime 7 dias" value={formatUptime(site.uptime_7d)} />
           <Stat label="Uptime 30 dias" value={formatUptime(site.uptime_30d)} />
@@ -205,13 +211,13 @@ function Performance({ site }: { site: Site }) {
             hint="O pior caso de 1 em cada 100 acessos"
           />
         </div>
-        <div className="flex rounded-lg bg-zinc-950 p-1">
+        <div className="flex rounded-sm border border-zinc-800 p-0.5">
           {RANGES.map((r) => (
             <button
               key={r.key}
               type="button"
               onClick={() => setRange(r.key)}
-              className={`rounded-md px-3 py-1 text-xs font-medium ${range === r.key ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-white'}`}
+              className={`rounded-[2px] px-3 py-1 text-xs ${range === r.key ? 'bg-brand/15 text-brand' : 'text-zinc-500 hover:text-zinc-200'}`}
             >
               {r.label}
             </button>
@@ -239,7 +245,7 @@ function Performance({ site }: { site: Site }) {
       </p>
       {timing?.last && <LastCheck timing={timing} />}
       <div>
-        <h3 className="mb-2 text-sm font-medium text-zinc-300">Incidentes (90 dias)</h3>
+        <h3 className="panel-title mb-2">Quedas (90 dias)</h3>
         {incidents.length === 0 ? (
           <p className="text-sm text-zinc-500">Nenhuma queda registrada.</p>
         ) : (

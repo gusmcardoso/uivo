@@ -30,6 +30,12 @@ export interface ReportSite {
   incidents: ReportIncident[];
   /** Uptime de cada dia do período (null = dia sem checagens). */
   daily: (number | null)[];
+  /** Resposta média de cada dia, só checagens bem-sucedidas (null = sem dados). */
+  dailyMs: (number | null)[];
+  /** Resposta média por hora do dia (0–23) ao longo do período: mostra os horários mais lentos. */
+  hourlyMs: (number | null)[];
+  /** O mesmo período do mês anterior, para comparar (null = sem dados). */
+  previous: { uptime: number | null; avgResponseMs: number | null };
   sslDays: number | null;
   domainDays: number | null;
   findings: Finding[];
@@ -112,11 +118,28 @@ export function buildReport(
         reason: i.reason,
       }));
 
-      const daily = days.map((dayStart, idx) => {
+      const avg = (list: number[]) =>
+        list.length ? Math.round(list.reduce((a, b) => a + b, 0) / list.length) : null;
+      const daily: (number | null)[] = [];
+      const dailyMs: (number | null)[] = [];
+      days.forEach((dayStart, idx) => {
         const dayEnd = days[idx + 1] ?? to;
         const inDay = rows.filter((r) => r.at >= dayStart && r.at < dayEnd);
-        return inDay.length ? (inDay.filter((r) => r.ok).length / inDay.length) * 100 : null;
+        daily.push(inDay.length ? (inDay.filter((r) => r.ok).length / inDay.length) * 100 : null);
+        dailyMs.push(avg(inDay.filter((r) => r.ok).map((r) => r.response_ms)));
       });
+      const byHour: number[][] = Array.from({ length: 24 }, () => []);
+      for (const r of okRows) byHour[new Date(r.at).getHours()].push(r.response_ms);
+      const hourlyMs = byHour.map(avg);
+
+      // mês anterior: mesmos indicadores, para dizer se melhorou ou piorou
+      const prevFrom = new Date(new Date(from).getFullYear(), new Date(from).getMonth() - 1, 1).getTime();
+      const prev = db
+        .prepare(
+          `SELECT COUNT(*) AS n, SUM(ok) AS up, ROUND(AVG(CASE WHEN ok = 1 THEN response_ms END)) AS ms
+           FROM checks WHERE site_id = ? AND at >= ? AND at < ?`,
+        )
+        .get(site.id, prevFrom, from) as { n: number; up: number | null; ms: number | null };
 
       const uptime7d = (() => {
         const r = db
@@ -143,6 +166,12 @@ export function buildReport(
         downtimeMs: incidents.reduce((sum, i) => sum + i.durationMs, 0),
         incidents,
         daily,
+        dailyMs,
+        hourlyMs,
+        previous: {
+          uptime: prev.n ? Math.round(((prev.up ?? 0) / prev.n) * 10000) / 100 : null,
+          avgResponseMs: prev.ms,
+        },
         sslDays: site.url.startsWith('https:') ? daysTo(site.ssl_expires_at) : null,
         domainDays: site.check_domain ? daysTo(site.domain_expires_at) : null,
         findings: audit?.findings ?? [],

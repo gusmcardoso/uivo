@@ -191,7 +191,7 @@ export function LastCheck({ timing }: { timing: TimingSummary }) {
           <span className="tabular-nums">{t.total} ms no total</span>
         </div>
         <div
-          className="flex h-7 overflow-hidden rounded-md bg-zinc-950"
+          className="flex h-6 overflow-hidden rounded-[2px] bg-zinc-950"
           role="img"
           aria-label="Tempo de cada etapa"
         >
@@ -204,12 +204,14 @@ export function LastCheck({ timing }: { timing: TimingSummary }) {
             />
           ))}
         </div>
-        <div className="mt-2 grid grid-cols-3 gap-x-4 gap-y-1 text-xs sm:grid-cols-6">
+        <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-xs sm:grid-cols-3 lg:grid-cols-6">
           {PHASES.map((ph) => (
             <div key={ph.key} className="flex items-center gap-1.5">
               <span className="size-2 shrink-0 rounded-sm" style={{ background: ph.color }} />
               <span className="text-zinc-400">{ph.label}</span>
-              <span className="ml-auto font-medium tabular-nums text-zinc-200">{t[ph.key]} ms</span>
+              <span className="ml-auto font-medium whitespace-nowrap tabular-nums text-zinc-200">
+                {t[ph.key]} ms
+              </span>
             </div>
           ))}
         </div>
@@ -230,7 +232,7 @@ export function LastCheck({ timing }: { timing: TimingSummary }) {
       )}
 
       {tip && (
-        <p className="rounded-xl border border-brand/20 bg-brand/5 p-3.5 text-sm text-zinc-300">
+        <p className="rounded-sm border border-brand/20 bg-brand/5 p-3.5 text-sm text-zinc-300">
           <span className="font-medium text-brand">
             {tip.label} responde por {Math.round(tip.share * 100)}% do tempo.
           </span>{' '}

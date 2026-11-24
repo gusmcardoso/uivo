@@ -78,7 +78,7 @@ export function ReportDialog({ sites, onClose }: { sites: Site[]; onClose: () =>
           </p>
         </div>
         <label className="block space-y-1.5 text-sm">
-          <span className="text-zinc-300">Mês</span>
+          <span className="label-xs">Mês</span>
           <select className="input" value={month} onChange={(e) => setMonth(e.target.value)}>
             {months.map((m) => (
               <option key={m.value} value={m.value}>
@@ -88,7 +88,7 @@ export function ReportDialog({ sites, onClose }: { sites: Site[]; onClose: () =>
           </select>
         </label>
         <label className="block space-y-1.5 text-sm">
-          <span className="text-zinc-300">Título</span>
+          <span className="label-xs">Título</span>
           <input
             className="input"
             maxLength={120}
@@ -98,7 +98,7 @@ export function ReportDialog({ sites, onClose }: { sites: Site[]; onClose: () =>
           />
         </label>
         <fieldset className="space-y-1.5">
-          <legend className="mb-1 text-sm text-zinc-300">Sites</legend>
+          <legend className="label-xs mb-1">Sites</legend>
           <div className="max-h-48 space-y-1 overflow-y-auto">
             {sites.map((s) => (
               <label key={s.id} className="flex items-center gap-2 text-sm text-zinc-300">
@@ -113,7 +113,11 @@ export function ReportDialog({ sites, onClose }: { sites: Site[]; onClose: () =>
             ))}
           </div>
         </fieldset>
-        {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p>}
+        {error && (
+          <p className="rounded-sm border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+            {error}
+          </p>
+        )}
         <div className="flex justify-end gap-2 pt-1">
           <button type="button" className="btn-ghost" onClick={onClose}>
             Cancelar

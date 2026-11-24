@@ -15,7 +15,7 @@ Monitor de saúde de sites, self-hosted e open source. Vai além do uptime: audi
 
 </div>
 
-![Painel do Uivo](docs/painel.webp)
+![Painel do Uivo: estado agora, o que pede atenção e as últimas 24 h de cada site](docs/img/painel.webp)
 
 ---
 
@@ -39,15 +39,44 @@ Monitores tradicionais perguntam só *"o servidor respondeu?"*. O problema de qu
 | Certificado SSL | Dias até vencer, emissor e validade da cadeia; avisos com 14 e 3 dias |
 | Vencimento de domínio | Via RDAP no servidor oficial de cada extensão (`.br` direto no Registro.br); avisos com 30 e 7 dias |
 | Incidentes | Início, fim e duração de cada queda, com histórico de 90 dias |
-| Painel | Uptime de 24 h, 7 e 30 dias, gráfico de tempo de resposta e vencimentos |
+| Painel | Estado agora, o que pede atenção, as últimas 24 h de cada site hora a hora e a variação da resposta contra ontem |
+| **Página de cada site** | Endereço próprio (`/sites/:id`): o voltar do navegador e o F5 funcionam e dá para mandar o link |
+| **Selo "monitorado com uivo"** | Para o rodapé dos seus sites: status ao vivo e uptime de 30 dias, versões para fundo escuro e claro; só para sites públicos |
 | **Detalhe de cada momento** | Passe o mouse no gráfico: resposta média, mínima e máxima, etapas, falhas e o motivo, comparados com o mesmo horário **ontem**, **há 7 dias** e o **normal daquele horário** (média dos 7 dias anteriores) (v0.2.0) |
 | Alertas | Telegram: queda, volta (com duração) e vencimentos, sem repetir aviso |
 | **Auditoria de segurança** | 1x ao dia: arquivos sensíveis expostos (`.env`, `.git`, backups, dumps SQL, `phpinfo`), cabeçalhos de segurança, HTTPS e redirecionamento, TLS obsoleto, conteúdo misto, listagem de diretório e versão do servidor exposta, cada achado com **como corrigir** (v0.1.2) |
 | **Detecção de adulteração** | Script externo de domínio novo na página ou termos típicos de invasão (\"hacked by\", spam de cassino) viram alerta (v0.1.2) |
 | **Nota de saúde 0–100** | Disponibilidade (40) + segurança (40) + validade de SSL e domínio (20) (v0.1.2) |
-| **Relatório mensal em PDF** | Por mês e sites escolhidos: nota de saúde, uptime dia a dia, quedas (cortadas na virada do mês), tempo de resposta, pendências de segurança e vencimentos, com aviso de **cobertura parcial** quando o monitor ficou parado. Gerado no servidor, sem navegador (v0.1.10) |
+| **Relatório mensal em PDF** | Feito para quem não é da área: veredito em uma frase, situação de cada site em semáforo, disponibilidade e velocidade dia a dia, horários mais lentos, quedas explicadas em português claro, o que pedir ao desenvolvedor, comparação com o mês anterior e glossário. Gerado no servidor, sem navegador |
 | Página de status pública | `/status`, só com os sites marcados como públicos: estado atual e barras de 90 dias (v0.1.1) |
 | Métricas Prometheus | `/metrics` protegido por token, pronto para o Grafana (v0.1.1) |
+
+### Selo "monitorado com uivo"
+
+![Selo para fundo escuro e para fundo claro](docs/img/selo.webp)
+
+Na página do site, aba **Selo**: escolha a versão (fundo escuro ou claro) e copie o código. O ponto fica verde quando o site está no ar e vermelho se cair; o número é o uptime dos últimos 30 dias. O selo só existe para sites marcados como públicos e mostra apenas nome, situação e uptime (o endereço monitorado e os detalhes continuam privados).
+
+```html
+<a href="https://seu-uivo.exemplo.com/status" target="_blank" rel="noopener">
+  <img src="https://seu-uivo.exemplo.com/badge/1.svg" alt="Monitorado com Uivo" height="24">
+</a>
+```
+
+### Telas
+
+![Página de um site](docs/img/site.webp)
+
+
+| Celular | Relatório em PDF |
+|---|---|
+| ![Painel, detalhe e segurança no celular](docs/img/celular.webp) | ![Capa, visão geral e próximos passos do relatório](docs/img/relatorio.webp) |
+
+| Entrar | Adicionar site |
+|---|---|
+| ![Tela de login](docs/img/login.webp) | ![Formulário de site](docs/img/formulario.webp) |
+
+As imagens usam dados fictícios de uma instância de demonstração.
 
 ### Rodando com Docker
 
@@ -88,7 +117,7 @@ No Prometheus, `uivo_site_content_verified` é 0 enquanto o conteúdo estiver ba
 
 "Respondeu em 420 ms" não diz o que fazer. O Uivo abre uma **conexão nova a cada checagem** (sem reaproveitar, para não mascarar DNS e TLS) e mede cada etapa separadamente. Se o servidor responde por mais de 40% do tempo, o painel diz isso e sugere o caminho (cache, CDN, DNS mais rápido, compressão).
 
-![Tempo por etapa](docs/tempo.webp)
+![Detalhe de um momento do gráfico, comparado com ontem e com 7 dias atrás](docs/img/desempenho.webp)
 
 Proteções do cliente HTTP: no máximo 5 redirecionamentos, 5 MB de download medido, tempo limite valendo para a requisição inteira e teto de 10 MB na descompressão (uma "bomba de compressão" não derruba o monitor).
 
@@ -96,7 +125,7 @@ Proteções do cliente HTTP: no máximo 5 redirecionamentos, 5 MB de download me
 
 Abra um site no painel e vá na aba **Segurança**: nota, achados ordenados por gravidade e o que fazer para corrigir cada um. A auditoria é **passiva**: só faz requisições GET ao que qualquer visitante já acessa, e confirma cada arquivo pelo **conteúdo** (um site que responde 200 para qualquer endereço não gera falso positivo). Use apenas em sites que você administra.
 
-![Aba de segurança](docs/seguranca.webp)
+![Aba de segurança: nota, o que corrigir e o que já está certo](docs/img/seguranca.webp)
 
 Achados graves **novos** vão para o Telegram; o mesmo achado não é repetido no dia seguinte. Se você mesmo adicionou um script (analytics, chat), clique em **Aceitar scripts atuais**.
 
@@ -121,7 +150,9 @@ O `up` confere antes de subir (segredos definidos e fortes, Docker respondendo, 
 | Loki + Alloy | Logs de todos os containers; os eventos do Uivo ganham o rótulo `event` |
 | Grafana | Três dashboards provisionados: **Sites**, **Servidor** e **Containers** |
 
-![Dashboard de sites no Grafana](docs/grafana.webp)
+![Dashboard de sites no Grafana](docs/img/grafana-sites.webp)
+
+![Dashboard do servidor no Grafana](docs/img/grafana-servidor.webp)
 
 Segurança: só o Grafana é publicado, e em `127.0.0.1` (para acesso externo, coloque um proxy reverso com HTTPS na frente); Prometheus, Loki e Alloy ficam na rede interna; o token do `/metrics` e a senha do Grafana entram como *secrets* do compose, lidos do `.env`; cadastro público, acesso anônimo e telemetria do Grafana desligados.
 
@@ -140,7 +171,7 @@ Incidentes e achados de segurança saem como **JSON estruturado** no log do cont
 
 Marque um site como **público** no painel e ele aparece em `http://seu-servidor:3000/status`, sem login: estado atual, uptime e barras dos últimos 90 dias. Só o nome e o domínio são expostos. Dá para colocar no rodapé do site do cliente ou no seu portfólio.
 
-![Página de status](docs/status.webp)
+![Página de status pública](docs/img/status.webp)
 
 ### Prometheus e Grafana
 
@@ -200,6 +231,7 @@ npm run lint && npm run typecheck
 - [x] **v0.1.1**: página de status pública e `/metrics` para Prometheus/Grafana
 - [x] **v0.1.2**: auditoria de segurança, detecção de adulteração, nota de saúde e eventos para o Loki
 - [x] **v0.1.3**: tempo por etapa (DNS, conexão, TLS, servidor, download), percentis e diagnóstico
+- [ ] **v0.2.1**: painel em estilo terminal com fundo de pixels, o que pede atenção e as últimas 24 h de cada site, página própria por site, selo "monitorado com uivo", aba Segurança e relatório em PDF refeitos
 - [x] **v0.2.0**: painel redesenhado, detalhe de cada ponto do gráfico comparado com dias anteriores, novo nome (**Uptrue → Uivo**) e nova marca; banco, backups e painéis antigos continuam valendo (o `uptrue.db` é adotado sozinho; veja [migração do servidor](docs/DEPLOY.md#7-migração-de-uma-instalação-uptrue)); `update.sh` faz rollback se a versão nova subir sem os dados
 - [x] **v0.1.10**: relatório mensal em PDF (botão **Relatório** no painel e `/api/reports/monthly`)
 - [x] **v0.1.9**: log do backup limpo, erros do backup externo em português e caminho completo no `--fetch`

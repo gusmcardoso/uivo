@@ -77,7 +77,7 @@ export function SiteForm({
       >
         <h2 className="text-lg font-semibold">{site ? 'Editar site' : 'Novo site'}</h2>
         <label className="block space-y-1.5 text-sm">
-          <span className="text-zinc-300">Nome</span>
+          <span className="label-xs">Nome</span>
           <input
             className="input"
             required
@@ -88,7 +88,7 @@ export function SiteForm({
           />
         </label>
         <label className="block space-y-1.5 text-sm">
-          <span className="text-zinc-300">Endereço</span>
+          <span className="label-xs">Endereço</span>
           <input
             className="input"
             type="url"
@@ -99,7 +99,7 @@ export function SiteForm({
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="block space-y-1.5 text-sm">
-            <span className="text-zinc-300">Verificar a cada</span>
+            <span className="label-xs">Verificar a cada</span>
             <select
               className="input"
               value={form.interval_sec}
@@ -113,7 +113,7 @@ export function SiteForm({
             </select>
           </label>
           <label className="block space-y-1.5 text-sm">
-            <span className="text-zinc-300">Palavra-chave</span>
+            <span className="label-xs">Palavra-chave</span>
             <input
               className="input"
               maxLength={200}
@@ -205,7 +205,11 @@ export function SiteForm({
           />
           Monitoramento ativo
         </label>
-        {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p>}
+        {error && (
+          <p className="rounded-sm border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+            {error}
+          </p>
+        )}
         <div className="flex justify-end gap-2 pt-1">
           <button type="button" className="btn-ghost" onClick={onClose}>
             Cancelar
