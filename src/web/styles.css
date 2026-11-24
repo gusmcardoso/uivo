@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 /*
- * Identidade do Uivo: fundo quase preto, texto zinco, âmbar só como cor da marca
+ * Identidade do Uivo: fundo quase preto, texto zinco, gelo (azul-claro) só como cor da marca
  * (botão principal, foco, linha do gráfico). Status usam cores próprias, sempre com texto:
- * verde = no ar, laranja = atenção, vermelho = fora do ar.
+ * verde = no ar, âmbar = atenção, vermelho = fora do ar.
  */
 @theme {
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --color-brand: #fbbf24;
-  --color-brand-strong: #f59e0b;
+  --color-brand: #7dd3fc;
+  --color-brand-strong: #38bdf8;
 }
 
 body {

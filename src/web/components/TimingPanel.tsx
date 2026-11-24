@@ -19,7 +19,7 @@ export const PHASES: { key: Phase; label: string; color: string; tip: string }[]
   {
     key: 'connect',
     label: 'Conexão',
-    color: '#38bdf8',
+    color: '#34d399',
     tip: 'A conexão até o servidor demora: ele está longe ou a rede está congestionada. Uma CDN ou um servidor mais próximo ajudam.',
   },
   {
@@ -31,7 +31,7 @@ export const PHASES: { key: Phase; label: string; color: string; tip: string }[]
   {
     key: 'wait',
     label: 'Servidor',
-    color: '#34d399',
+    color: '#7dd3fc',
     tip: 'O servidor demora para montar a página: banco de dados, código ou falta de cache. Cache de página costuma ter o maior ganho.',
   },
   {
@@ -245,7 +245,7 @@ function Detail({ label, value, warn }: { label: string; value: string; warn?: b
   return (
     <div>
       <dt className="text-xs text-zinc-500">{label}</dt>
-      <dd className={`font-medium ${warn ? 'text-orange-400' : ''}`}>{value}</dd>
+      <dd className={`font-medium ${warn ? 'text-amber-400' : ''}`}>{value}</dd>
     </div>
   );
 }

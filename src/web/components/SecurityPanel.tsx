@@ -6,15 +6,15 @@ const ORDER: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 
 
 const SEVERITY: Record<Severity, { label: string; className: string }> = {
   critical: { label: 'Crítico', className: 'bg-red-500/15 text-red-300 ring-red-500/30' },
-  high: { label: 'Alto', className: 'bg-orange-500/15 text-orange-300 ring-orange-500/30' },
-  medium: { label: 'Médio', className: 'bg-orange-500/15 text-orange-300 ring-orange-500/30' },
+  high: { label: 'Alto', className: 'bg-amber-500/15 text-amber-300 ring-amber-500/30' },
+  medium: { label: 'Médio', className: 'bg-amber-500/15 text-amber-300 ring-amber-500/30' },
   low: { label: 'Baixo', className: 'bg-zinc-500/15 text-zinc-300 ring-zinc-500/30' },
 };
 
 export function scoreTone(score: number | null): string {
   if (score === null) return 'text-zinc-500';
   if (score >= 90) return 'text-emerald-400';
-  if (score >= 70) return 'text-orange-400';
+  if (score >= 70) return 'text-amber-400';
   return 'text-red-400';
 }
 
@@ -65,7 +65,7 @@ export function SecurityPanel({ siteId, onChange }: { siteId: number; onChange: 
       </div>
 
       {audit?.error && (
-        <p className="rounded-xl border border-orange-500/30 bg-orange-500/5 p-3.5 text-sm text-orange-200">
+        <p className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3.5 text-sm text-amber-200">
           A última auditoria não pôde ser feita: {audit.error}
         </p>
       )}

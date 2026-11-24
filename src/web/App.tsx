@@ -191,7 +191,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
                             <span className="text-red-400"> · {site.last_error}</span>
                           ) : null}
                           {site.status === 'up' && site.last_challenge ? (
-                            <span className="text-orange-300">
+                            <span className="text-amber-300">
                               {' '}
                               · conteúdo não verificável: firewall ({site.last_challenge})
                             </span>
@@ -289,7 +289,7 @@ const statusOf = (site: Site): DotStatus =>
 
 export const TONES = {
   ok: 'text-emerald-400',
-  warn: 'text-orange-400',
+  warn: 'text-amber-400',
   bad: 'text-red-400',
   none: 'text-zinc-500',
 };
@@ -308,7 +308,7 @@ function Summary({ label, value, tone }: { label: string; value: number; tone?: 
 function StatusDot({ status }: { status: DotStatus }) {
   const color = {
     up: 'bg-emerald-400',
-    limited: 'bg-emerald-400 ring-2 ring-orange-400/70',
+    limited: 'bg-emerald-400 ring-2 ring-amber-400/70',
     down: 'bg-red-500',
     unknown: 'bg-zinc-500',
     paused: 'bg-zinc-700',

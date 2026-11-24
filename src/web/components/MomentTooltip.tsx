@@ -26,7 +26,7 @@ function Delta({ now, ref }: { now: number | null; ref: number | null }) {
   return (
     <span className="tabular-nums">
       <span className="text-zinc-400">{ref} ms · </span>
-      <span className={slower ? (pct >= 50 ? 'text-red-400' : 'text-orange-400') : 'text-emerald-400'}>
+      <span className={slower ? (pct >= 50 ? 'text-red-400' : 'text-amber-400') : 'text-emerald-400'}>
         {slower ? `+${pct}% mais lento` : `${pct}% mais rápido`}
       </span>
     </span>

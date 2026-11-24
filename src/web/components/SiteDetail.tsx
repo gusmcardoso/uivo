@@ -78,9 +78,9 @@ function ResponseChart({ points, onHover }: { points: CheckPoint[]; onHover?: (h
           {},
           {
             label: 'Resposta',
-            stroke: '#fbbf24',
+            stroke: '#7dd3fc',
             width: 2,
-            fill: 'rgba(251, 191, 36, 0.10)',
+            fill: 'rgba(125, 211, 252, 0.10)',
             points: { show: false },
           },
           {
@@ -175,8 +175,8 @@ function Performance({ site }: { site: Site }) {
   return (
     <div className="space-y-5 p-5">
       {site.last_challenge && (
-        <div className="rounded-xl border border-orange-500/30 bg-orange-500/5 p-3.5 text-sm text-zinc-300">
-          <p className="font-medium text-orange-300">
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3.5 text-sm text-zinc-300">
+          <p className="font-medium text-amber-300">
             Conteúdo não verificável: o firewall ({site.last_challenge}) exige um navegador.
           </p>
           <p className="mt-1">
