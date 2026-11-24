@@ -156,8 +156,10 @@ describe('PDF', () => {
     assert.equal(pdf.subarray(0, 5).toString(), '%PDF-');
     const pages = text.match(/\/Type \/Page\b/g)?.length ?? 0;
     // capa + 2 páginas por site + glossário (o rodapé não pode criar páginas)
-    assert.equal(pages, 6, `páginas: ${pages}`);
-    assert.ok(pdf.length < 200_000, `tamanho: ${pdf.length}`);
+    assert.equal(pages, 7, `páginas: ${pages}`); // capa + resumo + 2 por site + glossário
+    // tamanho do arquivo real (comprimido, com a fonte embutida e os pixels da capa)
+    const real = await renderReport(data);
+    assert.ok(real.length < 250_000, `tamanho: ${real.length}`);
   });
 
   it('também gera com zero sites e com site sem nenhuma checagem', async () => {

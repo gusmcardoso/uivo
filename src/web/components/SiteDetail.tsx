@@ -128,7 +128,7 @@ export function SiteDetail({ site, onChange }: { site: Site; onChange: () => voi
             key={key}
             type="button"
             onClick={() => setTab(key)}
-            className={`border-b-2 px-3 py-2 font-mono text-xs lowercase ${tab === key ? 'border-brand text-zinc-100' : 'border-transparent text-zinc-500 hover:text-zinc-200'}`}
+            className={`border-b-2 px-3 py-2 text-xs lowercase ${tab === key ? 'border-brand text-zinc-100' : 'border-transparent text-zinc-500 hover:text-zinc-200'}`}
           >
             {label}
           </button>
@@ -211,7 +211,7 @@ function Performance({ site }: { site: Site }) {
               key={r.key}
               type="button"
               onClick={() => setRange(r.key)}
-              className={`rounded-[2px] px-3 py-1 font-mono text-xs ${range === r.key ? 'bg-brand/15 text-brand' : 'text-zinc-500 hover:text-zinc-200'}`}
+              className={`rounded-[2px] px-3 py-1 text-xs ${range === r.key ? 'bg-brand/15 text-brand' : 'text-zinc-500 hover:text-zinc-200'}`}
             >
               {r.label}
             </button>
@@ -239,7 +239,7 @@ function Performance({ site }: { site: Site }) {
       </p>
       {timing?.last && <LastCheck timing={timing} />}
       <div>
-        <h3 className="panel-title mb-2">{'// quedas (90 dias)'}</h3>
+        <h3 className="panel-title mb-2">Quedas (90 dias)</h3>
         {incidents.length === 0 ? (
           <p className="text-sm text-zinc-500">Nenhuma queda registrada.</p>
         ) : (

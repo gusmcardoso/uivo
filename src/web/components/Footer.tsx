@@ -3,7 +3,7 @@ export function Footer({ className = '' }: { className?: string }) {
   const year = new Date().getFullYear();
   return (
     <footer
-      className={`flex flex-wrap items-center justify-center gap-x-6 gap-y-2 font-mono text-[11px] text-zinc-500 ${className}`}
+      className={`flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] text-zinc-500 ${className}`}
     >
       <span>
         © {year} uivo · código aberto, de olho nos seus sites{' '}

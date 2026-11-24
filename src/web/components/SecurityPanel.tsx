@@ -5,10 +5,10 @@ import { relativeTime } from '../format.ts';
 const ORDER: Severity[] = ['critical', 'high', 'medium', 'low'];
 
 const SEVERITY: Record<Severity, { label: string; text: string; bar: string; hint: string }> = {
-  critical: { label: 'crítico', text: 'text-red-400', bar: 'bg-red-500', hint: 'corrigir hoje' },
-  high: { label: 'alto', text: 'text-orange-400', bar: 'bg-orange-400', hint: 'corrigir esta semana' },
-  medium: { label: 'médio', text: 'text-amber-400', bar: 'bg-amber-400', hint: 'planejar a correção' },
-  low: { label: 'baixo', text: 'text-zinc-400', bar: 'bg-zinc-500', hint: 'quando der' },
+  critical: { label: 'Crítico', text: 'text-red-400', bar: 'bg-red-500', hint: 'corrigir hoje' },
+  high: { label: 'Alto', text: 'text-orange-400', bar: 'bg-orange-400', hint: 'corrigir esta semana' },
+  medium: { label: 'Médio', text: 'text-amber-400', bar: 'bg-amber-400', hint: 'planejar a correção' },
+  low: { label: 'Baixo', text: 'text-zinc-400', bar: 'bg-zinc-500', hint: 'quando der' },
 };
 
 export function scoreTone(score: number | null): string {
@@ -52,7 +52,7 @@ function ScoreRing({ score }: { score: number | null }) {
         strokeLinecap="butt"
         transform="rotate(-90 50 50)"
       />
-      <text x="50" y="55" textAnchor="middle" className="fill-zinc-100 font-mono" style={{ fontSize: 24 }}>
+      <text x="50" y="55" textAnchor="middle" className="fill-zinc-100" style={{ fontSize: 24 }}>
         {score ?? '—'}
       </text>
     </svg>
@@ -96,12 +96,12 @@ export function SecurityPanel({ siteId, onChange }: { siteId: number; onChange: 
             <div className={`text-sm font-medium ${scoreTone(audit?.score ?? null)}`}>
               {verdict(audit?.score ?? null)}
             </div>
-            <div className="mt-0.5 font-mono text-[11px] text-zinc-500">
+            <div className="mt-0.5 text-[11px] text-zinc-500">
               {audit?.at ? `auditado ${relativeTime(audit.at)}` : 'sem auditoria'}
             </div>
           </div>
         </div>
-        <ul className="space-y-1.5 font-mono text-xs">
+        <ul className="space-y-1.5 text-xs">
           {counts.map(({ sev, n }) => (
             <li key={sev} className="flex items-center gap-2">
               <span className={`size-2 rounded-[1px] ${n ? SEVERITY[sev].bar : 'bg-zinc-800'}`} />
@@ -111,17 +111,17 @@ export function SecurityPanel({ siteId, onChange }: { siteId: number; onChange: 
           ))}
           <li className="flex items-center gap-2 border-t border-zinc-800/80 pt-1.5">
             <span className="size-2 rounded-[1px] bg-emerald-400/80" />
-            <span className="text-emerald-400/90">aprovado</span>
+            <span className="text-emerald-400/90">Aprovado</span>
             <span className="ml-auto tabular-nums text-zinc-400">{audit?.passed.length ?? 0}</span>
           </li>
         </ul>
         <div className="flex flex-wrap gap-2">
           <button type="button" className="btn" disabled={busy} onClick={() => run('audit')}>
-            {busy ? 'auditando…' : 'auditar agora'}
+            {busy ? 'Auditando…' : 'Auditar agora'}
           </button>
           {hasNewScripts && (
             <button type="button" className="btn-ghost" disabled={busy} onClick={() => run('accept')}>
-              aceitar scripts atuais
+              Aceitar scripts atuais
             </button>
           )}
         </div>
@@ -140,7 +140,7 @@ export function SecurityPanel({ siteId, onChange }: { siteId: number; onChange: 
         )}
 
         <div>
-          <div className="panel-title mb-2">{`// o que corrigir (${findings.length})`}</div>
+          <div className="panel-title mb-2">{`O que corrigir (${findings.length})`}</div>
           {findings.length === 0 ? (
             <p className="text-sm text-zinc-400">
               {audit?.at
@@ -156,20 +156,20 @@ export function SecurityPanel({ siteId, onChange }: { siteId: number; onChange: 
                       <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-[1px] ${SEVERITY[f.severity].bar}`} />
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm font-medium text-zinc-100">{f.title}</span>
-                        <span className="font-mono text-[11px] text-zinc-500">
+                        <span className="text-[11px] text-zinc-500">
                           <span className={SEVERITY[f.severity].text}>{SEVERITY[f.severity].label}</span> ·{' '}
                           {SEVERITY[f.severity].hint}
                         </span>
                       </span>
-                      <span className="font-mono text-xs text-zinc-600 transition-transform group-open:rotate-90">
+                      <span className="text-xs text-zinc-600 transition-transform group-open:rotate-90">
                         ›
                       </span>
                     </summary>
                     <div className="space-y-2 px-3.5 pb-3.5 pl-8.5 text-sm">
                       <p className="text-zinc-400">{f.detail}</p>
                       <div className="rounded-sm border border-zinc-800 bg-zinc-950/80 p-2.5">
-                        <div className="label-xs mb-1">como corrigir</div>
-                        <p className="font-mono text-[12.5px] text-brand/90">{f.fix}</p>
+                        <div className="label-xs mb-1">Como corrigir</div>
+                        <p className="text-[12.5px] text-brand/90">{f.fix}</p>
                       </div>
                     </div>
                   </details>
@@ -181,13 +181,10 @@ export function SecurityPanel({ siteId, onChange }: { siteId: number; onChange: 
 
         {audit && audit.script_hosts.length > 0 && (
           <div>
-            <div className="panel-title mb-2">{'// scripts de terceiros na página'}</div>
+            <div className="panel-title mb-2">Scripts de terceiros na página</div>
             <div className="flex flex-wrap gap-1.5">
               {audit.script_hosts.map((h) => (
-                <span
-                  key={h}
-                  className="rounded-sm border border-zinc-800 px-2 py-0.5 font-mono text-xs text-zinc-400"
-                >
+                <span key={h} className="rounded-sm border border-zinc-800 px-2 py-0.5 text-xs text-zinc-400">
                   {h}
                 </span>
               ))}
@@ -201,13 +198,13 @@ export function SecurityPanel({ siteId, onChange }: { siteId: number; onChange: 
         {audit && audit.passed.length > 0 && (
           <details className="group">
             <summary className="panel-title cursor-pointer list-none hover:text-zinc-300">
-              {`// o que já está certo (${audit.passed.length})`}{' '}
+              {`O que já está certo (${audit.passed.length})`}{' '}
               <span className="group-open:hidden">· ver</span>
             </summary>
             <ul className="mt-2 grid gap-1 sm:grid-cols-2">
               {audit.passed.map((p) => (
                 <li key={p} className="flex gap-2 text-sm text-zinc-400">
-                  <span className="font-mono text-emerald-400">✓</span>
+                  <span className="text-emerald-400">✓</span>
                   {p}
                 </li>
               ))}

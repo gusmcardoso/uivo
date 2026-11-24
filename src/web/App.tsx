@@ -133,7 +133,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
               title="Relatório mensal em PDF"
             >
               <IconReport />
-              <span className="hidden sm:inline">relatório</span>
+              <span className="hidden sm:inline">Relatório</span>
             </button>
             <a
               className="btn-ghost"
@@ -143,15 +143,15 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
               title="Página de status pública"
             >
               <IconGlobe />
-              <span className="hidden sm:inline">status</span>
+              <span className="hidden sm:inline">Status</span>
             </a>
             <button type="button" className="btn-ghost" onClick={logout} title="Sair">
               <IconLogout />
-              <span className="hidden sm:inline">sair</span>
+              <span className="hidden sm:inline">Sair</span>
             </button>
             <button type="button" className="btn-primary ml-1.5" onClick={() => setEditing('new')}>
               <IconPlus />
-              <span className="hidden sm:inline">adicionar site</span>
+              <span className="hidden sm:inline">Adicionar site</span>
             </button>
           </nav>
         </div>
@@ -160,7 +160,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-10">
         {sites !== null && list.length === 0 ? (
           <div className="card grid place-items-center gap-3 p-12 text-center">
-            <p className="font-mono text-sm text-zinc-300">
+            <p className="text-sm text-zinc-300">
               $ uivo status<span className="cursor-blink">_</span>
             </p>
             <p className="max-w-sm text-sm text-zinc-500">
@@ -168,7 +168,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
               tempo de resposta, SSL, domínio e segurança.
             </p>
             <button type="button" className="btn-primary mt-2" onClick={() => setEditing('new')}>
-              <IconPlus /> adicionar o primeiro site
+              <IconPlus /> Adicionar o primeiro site
             </button>
           </div>
         ) : (
@@ -178,19 +178,21 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         {list.length > 0 && (
           <section className="card mt-4 overflow-hidden">
             <div className="flex items-center justify-between border-b border-zinc-800/80 px-4 py-2.5">
-              <span className="panel-title">{`// sites (${list.length})`}</span>
-              <span className="panel-title hidden md:inline">últimas 24 h, hora a hora</span>
+              <span className="panel-title">
+                Sites <span className="text-zinc-600">{list.length}</span>
+              </span>
+              <span className="label-xs hidden md:inline">cada quadradinho é uma hora</span>
             </div>
             <div className="hidden grid-cols-[minmax(0,1fr)_10rem_4.5rem_6rem_3.5rem_4rem_4rem_6.5rem] items-center gap-4 border-b border-zinc-800/60 px-4 py-2 md:grid">
-              <span className="label-xs">site</span>
-              <span className="label-xs">24 h</span>
-              <span className="label-xs">uptime</span>
-              <span className="label-xs">resposta</span>
+              <span className="label-xs">Site</span>
+              <span className="label-xs">Últimas 24 h</span>
+              <span className="label-xs">Uptime</span>
+              <span className="label-xs">Resposta</span>
               <span className="label-xs" title="Nota de saúde: disponibilidade, segurança e validade">
-                nota
+                Nota
               </span>
-              <span className="label-xs">ssl</span>
-              <span className="label-xs">domínio</span>
+              <span className="label-xs">SSL</span>
+              <span className="label-xs">Domínio</span>
               <span />
             </div>
             <ul className="divide-y divide-zinc-800/60">
@@ -311,7 +313,7 @@ function Summary({
   return (
     <section className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
       <div className="card p-5">
-        <p className="font-mono text-xs text-zinc-500">
+        <p className="text-xs text-zinc-500">
           <span className="text-brand">$</span> uivo status<span className="cursor-blink">_</span>
         </p>
         <p className="mt-3 text-3xl font-semibold tracking-tight text-zinc-100">
@@ -320,7 +322,7 @@ function Summary({
           {active.length} <span className="text-lg font-normal text-zinc-400">sites no ar</span>
         </p>
         {down.length > 0 ? (
-          <ul className="mt-2 space-y-1 font-mono text-xs">
+          <ul className="mt-2 space-y-1 text-xs">
             {down.map((s) => (
               <li key={s.id}>
                 <button type="button" className="text-red-300 hover:underline" onClick={() => onOpen(s.id)}>
@@ -331,46 +333,67 @@ function Summary({
             ))}
           </ul>
         ) : (
-          <p className="mt-2 font-mono text-xs text-emerald-400/80">✓ tudo respondendo agora</p>
+          <p className="mt-2 text-xs text-emerald-400/80">✓ tudo respondendo agora</p>
         )}
         <dl className="mt-5 grid grid-cols-3 gap-4 border-t border-zinc-800/80 pt-4">
-          <Stat label="checagens 24h" value={overview ? overview.checks24h.toLocaleString('pt-BR') : '—'} />
           <Stat
-            label="quedas 24h"
+            label="Checagens (24 h)"
+            value={overview ? overview.checks24h.toLocaleString('pt-BR') : '—'}
+          />
+          <Stat
+            label="Quedas (24 h)"
             value={overview ? String(overview.incidents24h) : '—'}
             tone={overview?.incidents24h ? 'bad' : undefined}
           />
           <Stat
-            label="resposta média"
+            label="Resposta média"
             value={avgMs === null ? '—' : `${avgMs} ms`}
             extra={avgChange === null ? null : <Trend change={avgChange} compact />}
           />
         </dl>
       </div>
 
-      <div className="card flex flex-col p-5">
-        <div className="flex items-center justify-between">
-          <span className="panel-title">{'// pedindo atenção'}</span>
-          <span className="font-mono text-[11px] text-zinc-600">{attention.length}</span>
+      <div className="card flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between border-b border-zinc-800/80 px-5 py-3.5">
+          <span className="panel-title">Pedindo atenção</span>
+          {attention.length > 0 && (
+            <span
+              className={`rounded-sm px-1.5 py-0.5 text-xs font-medium tabular-nums ${
+                attention.some((x) => x.tone === 'bad')
+                  ? 'bg-red-500/15 text-red-300'
+                  : 'bg-amber-400/15 text-amber-300'
+              }`}
+            >
+              {attention.length}
+            </span>
+          )}
         </div>
         {attention.length === 0 ? (
-          <p className="mt-4 text-sm text-zinc-500">Nada pedindo atenção agora. Pode tomar o café em paz.</p>
+          <div className="flex flex-1 flex-col items-start justify-center gap-1 px-5 py-6">
+            <span className="text-sm text-emerald-400">Tudo em ordem.</span>
+            <span className="text-xs text-zinc-500">
+              Nada pedindo atenção agora. Pode tomar o café em paz.
+            </span>
+          </div>
         ) : (
-          <ul className="mt-3 max-h-48 space-y-1.5 overflow-y-auto pr-1">
+          <ul className="max-h-56 divide-y divide-zinc-800/60 overflow-y-auto">
             {attention.map((a) => (
               <li key={a.key}>
                 <button
                   type="button"
                   onClick={() => onOpen(a.site.id)}
-                  className="flex w-full items-baseline gap-2 rounded-sm px-1.5 py-1 text-left text-sm hover:bg-zinc-900/70"
+                  className="group flex w-full items-center gap-3 px-5 py-2.5 text-left transition-colors hover:bg-zinc-900/60"
                 >
                   <span
-                    className={`font-mono text-xs ${a.tone === 'bad' ? 'text-red-400' : 'text-amber-400'}`}
-                  >
-                    {a.tone === 'bad' ? '✕' : '!'}
+                    className={`h-8 w-0.5 shrink-0 rounded-full ${a.tone === 'bad' ? 'bg-red-500' : 'bg-amber-400'}`}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm text-zinc-100">{a.site.name}</span>
+                    <span className="block truncate text-xs text-zinc-500">{a.text}</span>
                   </span>
-                  <span className="text-zinc-200">{a.site.name}</span>
-                  <span className="truncate text-zinc-500">{a.text}</span>
+                  <span className="text-xs text-zinc-600 transition-colors group-hover:text-zinc-300">
+                    abrir ›
+                  </span>
                 </button>
               </li>
             ))}
@@ -395,7 +418,7 @@ function Stat({
   return (
     <div>
       <dt className="label-xs">{label}</dt>
-      <dd className={`mt-1 font-mono text-lg tabular-nums ${tone ? TONES[tone] : 'text-zinc-100'}`}>
+      <dd className={`mt-1 text-lg tabular-nums ${tone ? TONES[tone] : 'text-zinc-100'}`}>
         {value} {extra}
       </dd>
     </div>
@@ -493,7 +516,7 @@ function SiteRow({
         <StatusDot status={status} />
         <div className="min-w-0">
           <div className="truncate font-medium text-zinc-100">{site.name}</div>
-          <div className="truncate font-mono text-[11px] text-zinc-500">
+          <div className="truncate text-[11px] text-zinc-500">
             {hostOf(site.url)} · {site.enabled ? relativeTime(site.last_checked_at) : 'pausado'}
             {site.status === 'down' && site.last_error ? (
               <span className="text-red-400"> · {site.last_error}</span>
@@ -505,8 +528,8 @@ function SiteRow({
         <HourStrip ov={ov} from={from} />
       </div>
       <div className="col-span-2 row-start-3 grid grid-cols-5 gap-3 md:col-span-1 md:row-start-auto md:contents">
-        <Cell label="uptime">{formatUptime(site.uptime_24h)}</Cell>
-        <Cell label="resposta">
+        <Cell label="Uptime">{formatUptime(site.uptime_24h)}</Cell>
+        <Cell label="Resposta">
           {site.status === 'down' ? (
             <span className="text-red-400">falhou</span>
           ) : site.last_response_ms === null ? (
@@ -518,17 +541,17 @@ function SiteRow({
             </>
           )}
         </Cell>
-        <Cell label="nota" title="Nota de saúde: disponibilidade, segurança e validade">
+        <Cell label="Nota" title="Nota de saúde: disponibilidade, segurança e validade">
           <span className={scoreTone(site.health_score)}>{site.health_score ?? '—'}</span>
         </Cell>
         <Expiry
-          label="ssl"
+          label="SSL"
           days={daysUntil(site.ssl_expires_at)}
           warn={14}
           title={site.ssl_error ?? site.ssl_issuer ?? undefined}
         />
         <Expiry
-          label="domínio"
+          label="Domínio"
           days={site.check_domain ? daysUntil(site.domain_expires_at) : null}
           warn={30}
           title={site.domain_error ?? undefined}
@@ -596,7 +619,7 @@ function StatusDot({ status }: { status: DotStatus }) {
 
 function Cell({ label, title, children }: { label: string; title?: string; children: React.ReactNode }) {
   return (
-    <div className="font-mono text-[13px] tabular-nums" title={title}>
+    <div className="text-[13px] tabular-nums" title={title}>
       <div className="label-xs md:hidden">{label}</div>
       <div className="text-zinc-200">{children}</div>
     </div>

@@ -1,39 +1,43 @@
+import path from 'node:path';
 import PDFDocument from 'pdfkit';
 import { BRAND } from '../../shared/brand.ts';
 import type { Severity } from '../checks/security.ts';
 import type { ReportData, ReportIncident, ReportSite } from './data.ts';
 
 /*
- * Relatório mensal pensado para quem não é da área: cada número vem com uma frase dizendo o que
- * ele significa, os gráficos têm faixas de "bom / aceitável / ruim" e no fim há um glossário.
+ * Relatório mensal com a identidade do Uivo: capa escura com o campo de "pixels" em gelo, a fonte
+ * Geist embutida e os mesmos quadradinhos do painel nos gráficos. O conteúdo é escrito para quem
+ * não é da área: cada número vem com uma frase do que ele significa, e há um glossário no fim.
  */
 
+const FONTS = path.join(import.meta.dirname, 'fonts');
+const R = 'Geist';
+const MD = 'Geist-Medium';
+const SB = 'Geist-SemiBold';
+
 const C = {
-  text: '#18181b',
+  night: '#070a0e',
+  nightPanel: '#0d131a',
+  ink: '#0b0f14',
+  ink2: '#3f3f46',
   muted: '#71717a',
   faint: '#a1a1aa',
-  line: '#e4e4e7',
-  soft: '#f4f4f5',
-  ice: BRAND.ice.onLight,
-  iceSoft: '#e0f2fe',
+  rule: '#e4e4e7',
+  wash: '#f6f7f9',
+  ice: BRAND.ice.onDark,
+  iceDark: BRAND.ice.onLight,
   green: '#059669',
-  greenSoft: '#d1fae5',
   amber: '#d97706',
-  amberSoft: '#fef3c7',
   red: '#dc2626',
-  redSoft: '#fee2e2',
   empty: '#e4e4e7',
 };
-const M = 44; // margem
-const W = 595.28 - 2 * M; // largura útil do A4
+const M = 46; // margem
+const PW = 595.28;
+const PH = 841.89;
+const W = PW - 2 * M;
 type Doc = InstanceType<typeof PDFDocument>;
 type Tone = 'good' | 'warn' | 'bad' | 'none';
-const TONE: Record<Tone, { fg: string; bg: string }> = {
-  good: { fg: C.green, bg: C.greenSoft },
-  warn: { fg: C.amber, bg: C.amberSoft },
-  bad: { fg: C.red, bg: C.redSoft },
-  none: { fg: C.muted, bg: C.soft },
-};
+const TONE: Record<Tone, string> = { good: C.green, warn: C.amber, bad: C.red, none: C.faint };
 
 // ─── textos em linguagem simples ────────────────────────────────────────────
 
@@ -61,28 +65,22 @@ export function periodLabel(from: number): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function uptimeTone(u: number | null): Tone {
-  if (u === null) return 'none';
-  return u >= 99.5 ? 'good' : u >= 98 ? 'warn' : 'bad';
-}
-function uptimeWord(u: number | null): string {
-  if (u === null) return 'sem dados';
-  return u >= 99.9 ? 'excelente' : u >= 99.5 ? 'bom' : u >= 98 ? 'regular' : 'ruim';
-}
+const uptimeTone = (u: number | null): Tone =>
+  u === null ? 'none' : u >= 99.5 ? 'good' : u >= 98 ? 'warn' : 'bad';
+const uptimeWord = (u: number | null) =>
+  u === null ? 'sem dados' : u >= 99.9 ? 'excelente' : u >= 99.5 ? 'bom' : u >= 98 ? 'regular' : 'ruim';
 function speed(ms: number | null): { word: string; tone: Tone; hint: string } {
   if (ms === null) return { word: 'sem dados', tone: 'none', hint: 'Não houve resposta para medir.' };
   if (ms < 500) return { word: 'rápido', tone: 'good', hint: 'Abre em menos de meio segundo.' };
-  if (ms < 1500)
-    return { word: 'aceitável', tone: 'warn', hint: 'Dá para usar, mas o visitante já percebe a espera.' };
-  return { word: 'lento', tone: 'bad', hint: 'Visitantes costumam desistir de páginas lentas assim.' };
+  if (ms < 1500) return { word: 'aceitável', tone: 'warn', hint: 'O visitante já percebe a espera.' };
+  return { word: 'lento', tone: 'bad', hint: 'Visitantes costumam desistir assim.' };
 }
 function securityInfo(score: number | null): { word: string; tone: Tone } {
   if (score === null) return { word: 'não auditado', tone: 'none' };
-  return score >= 90
-    ? { word: 'bem protegido', tone: 'good' }
-    : score >= 70
-      ? { word: 'pontos a melhorar', tone: 'warn' }
-      : { word: 'precisa de atenção', tone: 'bad' };
+  if (score >= 90) return { word: 'bem protegido', tone: 'good' };
+  return score >= 70
+    ? { word: 'pontos a melhorar', tone: 'warn' }
+    : { word: 'precisa de atenção', tone: 'bad' };
 }
 
 /** Motivo técnico da queda traduzido para o leitor leigo. */
@@ -152,16 +150,16 @@ function todo(s: ReportSite): { tone: Tone; text: string }[] {
       tone: 'warn',
       text: `Conversar com a hospedagem: foram ${s.incidents.length} quedas no mês. Vale pedir a causa e uma solução definitiva.`,
     });
-  if (speed(s.avgResponseMs).tone !== 'good' && s.avgResponseMs !== null)
+  if (s.avgResponseMs !== null && speed(s.avgResponseMs).tone !== 'good')
     out.push({
       tone: 'warn',
-      text: 'Pedir ao desenvolvedor uma revisão de desempenho (cache, imagens e hospedagem): o site está mais lento que o ideal.',
+      text: 'Pedir uma revisão de desempenho (cache, imagens e hospedagem): o site está mais lento que o ideal.',
     });
   const serious = s.findings.filter((f) => f.severity === 'critical' || f.severity === 'high');
   if (serious.length)
     out.push({
       tone: 'bad',
-      text: `Corrigir ${serious.length} falha(s) de segurança grave(s) listadas abaixo.`,
+      text: `Corrigir ${serious.length} falha(s) de segurança grave(s), listadas abaixo.`,
     });
   else if (s.findings.length)
     out.push({
@@ -169,433 +167,17 @@ function todo(s: ReportSite): { tone: Tone; text: string }[] {
       text: `Pedir ao desenvolvedor os ajustes de segurança listados abaixo (${s.findings.length}).`,
     });
   if (out.length === 0)
-    out.push({ tone: 'good', text: 'Nada urgente. Continue acompanhando pelo relatório do próximo mês.' });
+    out.push({ tone: 'good', text: 'Nada urgente. Continue acompanhando no relatório do próximo mês.' });
   return out;
-}
-
-// ─── blocos de desenho ───────────────────────────────────────────────────────
-
-function logo(doc: Doc, x: number, y: number, height = 30) {
-  const scale = height / BRAND.height;
-  doc.save().translate(x, y).scale(scale);
-  doc.path(BRAND.wordmark).fillColor(C.text).fill();
-  BRAND.arcs.forEach((d, i) => {
-    doc
-      .path(d)
-      .lineWidth(2.2)
-      .lineCap('round')
-      .strokeOpacity(BRAND.arcOpacity[i])
-      .strokeColor(C.ice)
-      .stroke();
-  });
-  doc.restore();
-}
-
-function label(doc: Doc, text: string, x: number, y: number, width = W) {
-  doc
-    .font('Helvetica-Bold')
-    .fontSize(7.5)
-    .fillColor(C.ice)
-    .text(text.toUpperCase(), x, y, { width, characterSpacing: 0.8 });
-}
-
-function heading(doc: Doc, text: string, y: number, sub?: string) {
-  doc.font('Helvetica-Bold').fontSize(12.5).fillColor(C.text).text(text, M, y, { width: W });
-  let yy = doc.y + 1;
-  if (sub) {
-    doc.font('Helvetica').fontSize(8.5).fillColor(C.muted).text(sub, M, yy, { width: W });
-    yy = doc.y;
-  }
-  return yy + 8;
-}
-
-function pill(doc: Doc, text: string, tone: Tone, x: number, y: number) {
-  doc.font('Helvetica-Bold').fontSize(8);
-  const w = doc.widthOfString(text) + 18;
-  doc.roundedRect(x, y, w, 16, 8).fill(TONE[tone].bg);
-  doc.circle(x + 8, y + 8, 2.6).fill(TONE[tone].fg);
-  doc.fillColor(TONE[tone].fg).text(text, x + 13, y + 4.6, { lineBreak: false });
-  return w;
-}
-
-/** Cartão com número grande e uma frase explicando o que ele quer dizer. */
-function card(
-  doc: Doc,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  o: { title: string; value: string; word: string; tone: Tone; hint: string },
-) {
-  doc.roundedRect(x, y, w, h, 6).fill(C.soft);
-  doc.rect(x, y + 10, 2.5, h - 20).fill(TONE[o.tone].fg);
-  doc
-    .font('Helvetica-Bold')
-    .fontSize(7.5)
-    .fillColor(C.muted)
-    .text(o.title.toUpperCase(), x + 12, y + 10, { width: w - 22, characterSpacing: 0.6 });
-  let size = 19;
-  doc.font('Helvetica-Bold');
-  while (size > 11 && doc.fontSize(size).widthOfString(o.value) > w - 24) size -= 1;
-  doc
-    .fontSize(size)
-    .fillColor(C.text)
-    .text(o.value, x + 12, y + 23, { width: w - 22, lineBreak: false });
-  doc
-    .font('Helvetica-Bold')
-    .fontSize(8.5)
-    .fillColor(TONE[o.tone].fg)
-    .text(o.word, x + 12, y + 47, { width: w - 22 });
-  doc
-    .font('Helvetica')
-    .fontSize(7.8)
-    .fillColor(C.muted)
-    .text(o.hint, x + 12, doc.y + 1.5, { width: w - 22, height: h - (doc.y - y) - 6, ellipsis: true });
-}
-
-/** Barras de disponibilidade por dia. */
-function dailyBars(doc: Doc, s: ReportSite, y: number) {
-  const n = s.daily.length;
-  const gap = 2;
-  const bw = (W - gap * (n - 1)) / n;
-  const H = 46;
-  s.daily.forEach((u, i) => {
-    const h = u === null ? 4 : 6 + (Math.max(0, u - 90) / 10) * (H - 6);
-    const tone = uptimeTone(u);
-    doc.rect(M + i * (bw + gap), y + H - h, bw, h).fill(u === null ? C.empty : TONE[tone].fg);
-  });
-  doc.font('Helvetica').fontSize(6.8).fillColor(C.faint);
-  s.daily.forEach((_, i) => {
-    if (i % 5 === 0 || i === n - 1)
-      doc.text(String(i + 1), M + i * (bw + gap) - 4, y + H + 3, { width: bw + 8, align: 'center' });
-  });
-  legend(doc, y + H + 14, [
-    [C.green, 'no ar o dia todo (99,5% ou mais)'],
-    [C.amber, 'instabilidade'],
-    [C.red, 'fora do ar por bastante tempo'],
-    [C.empty, 'sem monitoramento'],
-  ]);
-  return y + H + 28;
-}
-
-function legend(doc: Doc, y: number, items: [string, string][]) {
-  let x = M;
-  doc.font('Helvetica').fontSize(7);
-  for (const [color, text] of items) {
-    doc.rect(x, y + 1, 6, 6).fill(color);
-    doc.fillColor(C.muted).text(text, x + 9, y, { lineBreak: false });
-    x += 9 + doc.widthOfString(text) + 14;
-  }
-}
-
-/** Linha da velocidade dia a dia sobre faixas de rápido / aceitável / lento. */
-function speedChart(doc: Doc, s: ReportSite, y: number) {
-  const H = 92;
-  const left = M + 34;
-  const cw = W - 34;
-  const values = s.dailyMs.filter((v): v is number => v !== null);
-  const top = Math.max(800, Math.ceil((Math.max(0, ...values) * 1.2) / 200) * 200);
-  const yOf = (ms: number) => y + H - (Math.min(ms, top) / top) * H;
-  // faixas
-  const bands: [number, number, string][] = [
-    [0, 500, '#ecfdf5'],
-    [500, 1500, '#fffbeb'],
-    [1500, top, '#fef2f2'],
-  ];
-  for (const [a, b, color] of bands) {
-    if (a >= top) continue;
-    doc.rect(left, yOf(Math.min(b, top)), cw, yOf(a) - yOf(Math.min(b, top))).fill(color);
-  }
-  // eixo
-  doc.font('Helvetica').fontSize(6.8).fillColor(C.faint);
-  for (const v of [0, top / 2, top]) {
-    doc.text(`${Math.round(v)} ms`, M - 4, yOf(v) - 3, { width: 34, align: 'right' });
-    doc
-      .moveTo(left, yOf(v))
-      .lineTo(left + cw, yOf(v))
-      .lineWidth(0.4)
-      .strokeColor(C.line)
-      .stroke();
-  }
-  // linha (com quebras nos dias sem dados)
-  const n = s.dailyMs.length;
-  const xOf = (i: number) => left + (n === 1 ? cw / 2 : (i / (n - 1)) * cw);
-  let drawing = false;
-  s.dailyMs.forEach((v, i) => {
-    if (v === null) {
-      drawing = false;
-      return;
-    }
-    if (!drawing) doc.moveTo(xOf(i), yOf(v));
-    else doc.lineTo(xOf(i), yOf(v));
-    drawing = true;
-  });
-  doc.lineWidth(1.6).lineJoin('round').strokeColor(C.ice).stroke();
-  s.dailyMs.forEach((v, i) => {
-    if (v !== null) doc.circle(xOf(i), yOf(v), 1.6).fill(C.ice);
-  });
-  doc.font('Helvetica').fontSize(6.8).fillColor(C.faint);
-  s.dailyMs.forEach((_, i) => {
-    if (i % 5 === 0 || i === n - 1)
-      doc.text(String(i + 1), xOf(i) - 6, y + H + 3, { width: 12, align: 'center' });
-  });
-  legend(doc, y + H + 14, [
-    ['#bbf7d0', 'rápido (até 0,5 s)'],
-    ['#fde68a', 'aceitável (até 1,5 s)'],
-    ['#fecaca', 'lento'],
-    [C.ice, 'tempo médio do dia'],
-  ]);
-  return y + H + 28;
-}
-
-/** Barras por hora do dia: quando o site fica mais lento. */
-function hourChart(doc: Doc, s: ReportSite, y: number) {
-  const H = 58;
-  const valid = s.hourlyMs.filter((v): v is number => v !== null);
-  if (valid.length < 6) {
-    doc
-      .font('Helvetica')
-      .fontSize(8.5)
-      .fillColor(C.muted)
-      .text('Ainda não há dados suficientes para comparar os horários.', M, y);
-    return doc.y + 8;
-  }
-  const max = Math.max(...valid);
-  const min = Math.min(...valid);
-  const gap = 3;
-  const bw = (W - gap * 23) / 24;
-  // as 3 horas mais lentas ganham destaque
-  const slowest = [...s.hourlyMs.entries()]
-    .filter(([, v]) => v !== null)
-    .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
-    .slice(0, 3)
-    .map(([h]) => h);
-  s.hourlyMs.forEach((v, h) => {
-    const bh = v === null ? 3 : 6 + ((v - min) / Math.max(1, max - min)) * (H - 6);
-    doc
-      .rect(M + h * (bw + gap), y + H - bh, bw, bh)
-      .fill(v === null ? C.empty : slowest.includes(h) ? C.amber : '#7dd3fc');
-  });
-  doc.font('Helvetica').fontSize(6.8).fillColor(C.faint);
-  for (let h = 0; h < 24; h += 3)
-    doc.text(`${h}h`, M + h * (bw + gap) - 2, y + H + 3, { width: bw + 4, align: 'center' });
-  const hours = [...slowest].sort((a, b) => a - b).map((h) => `${h}h`);
-  const avgSlow = Math.round(slowest.reduce((a, h) => a + (s.hourlyMs[h] ?? 0), 0) / slowest.length);
-  doc
-    .font('Helvetica')
-    .fontSize(8.5)
-    .fillColor(C.text)
-    .text(`Os horários mais lentos foram ${hours.join(', ')} (média de ${avgSlow} ms). `, M, y + H + 16, {
-      width: W,
-      continued: true,
-    })
-    .fillColor(C.muted)
-    .text(
-      max - min < 80
-        ? 'A diferença entre o horário mais rápido e o mais lento é pequena: o site se comporta bem o dia todo.'
-        : 'Costumam ser os horários de mais movimento; se for o seu pico de vendas, vale melhorar a hospedagem.',
-    );
-  return doc.y + 8;
-}
-
-// ─── páginas ───────────────────────────────────────────────────────────────
-
-function coverPage(doc: Doc, data: ReportData) {
-  logo(doc, M, M, 30);
-  label(doc, 'Relatório mensal de monitoramento', M, M + 52);
-  doc
-    .font('Helvetica-Bold')
-    .fontSize(23)
-    .fillColor(C.text)
-    .text(data.title, M, M + 64, { width: W });
-  const meta = [
-    periodLabel(data.from),
-    data.author ? `preparado por ${data.author}` : null,
-    `gerado em ${new Date(data.generatedAt).toLocaleDateString('pt-BR')}`,
-  ]
-    .filter(Boolean)
-    .join('  ·  ');
-  doc
-    .font('Helvetica')
-    .fontSize(10)
-    .fillColor(C.muted)
-    .text(meta, M, doc.y + 4, { width: W });
-  let y = doc.y + 18;
-
-  // veredito em uma frase + os destaques
-  const withData = data.sites.filter((s) => s.uptime !== null);
-  const avg = withData.length ? withData.reduce((a, s) => a + (s.uptime ?? 0), 0) / withData.length : null;
-  const incidents = data.sites.reduce((a, s) => a + s.incidents.length, 0);
-  const down = data.sites.reduce((a, s) => a + s.downtimeMs, 0);
-  const fast = withData
-    .filter((s) => s.avgResponseMs !== null)
-    .sort((a, b) => (a.avgResponseMs ?? 0) - (b.avgResponseMs ?? 0));
-  const issues = data.sites.flatMap((s) =>
-    todo(s)
-      .filter((t) => t.tone !== 'good')
-      .map((t) => ({ ...t, site: s.name })),
-  );
-  const n = data.sites.length;
-  const headline =
-    avg === null
-      ? `Ainda não há dados de ${monthName(data.from)} para os sites escolhidos.`
-      : `Em ${monthName(data.from)}, ${n === 1 ? 'seu site ficou' : `seus ${n} sites ficaram`} no ar ${pct(avg)} do tempo.`;
-  const bullets = [
-    incidents
-      ? `Houve ${incidents} queda${incidents > 1 ? 's' : ''}, somando ${formatDuration(down)} fora do ar.`
-      : 'Nenhuma queda registrada no mês.',
-    fast.length > 1 && fast[0].avgResponseMs === fast[fast.length - 1].avgResponseMs
-      ? `Todos responderam, em média, em ${fast[0].avgResponseMs} ms (${speed(fast[0].avgResponseMs).word}).`
-      : fast.length > 1
-        ? `Mais rápido: ${fast[0].name} (${fast[0].avgResponseMs} ms). Mais lento: ${fast[fast.length - 1].name} (${fast[fast.length - 1].avgResponseMs} ms).`
-        : fast.length === 1
-          ? `Tempo médio de resposta: ${fast[0].avgResponseMs} ms (${speed(fast[0].avgResponseMs).word}).`
-          : null,
-    issues.length
-      ? `${issues.length} ponto${issues.length > 1 ? 's pedem' : ' pede'} atenção (detalhes abaixo).`
-      : 'Nada pedindo atenção: tudo dentro do esperado.',
-  ].filter((b): b is string => b !== null);
-  doc.font('Helvetica-Bold').fontSize(13.5);
-  const hh = doc.heightOfString(headline, { width: W - 36 });
-  const boxH = 26 + hh + bullets.length * 15 + 6;
-  doc.roundedRect(M, y, W, boxH, 8).fill(C.iceSoft);
-  doc.rect(M, y, 3, boxH).fill(C.ice);
-  doc.fillColor(C.text).text(headline, M + 18, y + 16, { width: W - 36 });
-  let by = doc.y + 6;
-  for (const b of bullets) {
-    doc.circle(M + 22, by + 4.5, 1.8).fill(C.ice);
-    doc
-      .font('Helvetica')
-      .fontSize(9.5)
-      .fillColor(C.text)
-      .text(b, M + 30, by, { width: W - 48 });
-    by = doc.y + 4;
-  }
-  y += boxH + 22;
-
-  // tabela: situação de cada site
-  y = heading(doc, 'Situação de cada site', y);
-  const cols = [
-    { h: 'Site', w: 0.3 },
-    { h: 'Situação', w: 0.17 },
-    { h: 'No ar', w: 0.12 },
-    { h: 'Quedas', w: 0.1 },
-    { h: 'Fora do ar', w: 0.14 },
-    { h: 'Velocidade', w: 0.17 },
-  ].map((c) => ({ ...c, w: c.w * W }));
-  let x = M;
-  doc.font('Helvetica-Bold').fontSize(7.5).fillColor(C.muted);
-  for (const c of cols) {
-    doc.text(c.h.toUpperCase(), x + 4, y, { width: c.w - 8, characterSpacing: 0.5 });
-    x += c.w;
-  }
-  y += 14;
-  doc
-    .moveTo(M, y - 3)
-    .lineTo(M + W, y - 3)
-    .lineWidth(0.6)
-    .strokeColor(C.line)
-    .stroke();
-  for (const [i, s] of data.sites.entries()) {
-    if (y > doc.page.height - 150) {
-      doc.addPage();
-      y = M;
-    }
-    if (i % 2) doc.rect(M, y - 3, W, 24).fill(C.soft);
-    const sit = situation(s);
-    const sp = speed(s.avgResponseMs);
-    x = M;
-    doc
-      .font('Helvetica-Bold')
-      .fontSize(9)
-      .fillColor(C.text)
-      .text(s.name, x + 4, y + 4, { width: cols[0].w - 8, lineBreak: false, ellipsis: true });
-    x += cols[0].w;
-    pill(doc, sit.word, sit.tone, x + 2, y + 1);
-    x += cols[1].w;
-    doc
-      .font('Helvetica')
-      .fontSize(9)
-      .fillColor(TONE[uptimeTone(s.uptime)].fg)
-      .text(pct(s.uptime), x + 4, y + 4, { width: cols[2].w - 8, lineBreak: false });
-    x += cols[2].w;
-    doc
-      .fillColor(s.incidents.length ? C.red : C.text)
-      .text(String(s.incidents.length), x + 4, y + 4, { width: cols[3].w - 8, lineBreak: false });
-    x += cols[3].w;
-    doc
-      .fillColor(C.text)
-      .text(formatDuration(s.downtimeMs), x + 4, y + 4, { width: cols[4].w - 8, lineBreak: false });
-    x += cols[4].w;
-    doc
-      .fillColor(TONE[sp.tone].fg)
-      .text(s.avgResponseMs === null ? '—' : `${sp.word} · ${s.avgResponseMs} ms`, x + 4, y + 4, {
-        width: cols[5].w - 8,
-        lineBreak: false,
-        ellipsis: true,
-      });
-    y += 24;
-  }
-  y += 14;
-
-  if (issues.length) {
-    y = heading(doc, 'Pontos de atenção', y);
-    for (const it of issues.slice(0, 7)) {
-      if (y > doc.page.height - 90) break;
-      doc.rect(M, y + 2, 6, 6).fill(TONE[it.tone].fg);
-      doc
-        .font('Helvetica-Bold')
-        .fontSize(8.8)
-        .fillColor(C.text)
-        .text(`${it.site}: `, M + 14, y, { width: W - 14, continued: true });
-      doc.font('Helvetica').fillColor(C.muted).text(it.text);
-      y = doc.y + 5;
-    }
-  }
-
-  const partial = data.sites.filter((s) => s.coverage < 95 && s.checks > 0);
-  if (partial.length && y < doc.page.height - 80) {
-    doc
-      .font('Helvetica')
-      .fontSize(7.8)
-      .fillColor(C.amber)
-      .text(
-        `Monitoramento parcial: ${partial.map((s) => `${s.name} (${String(s.coverage).replace('.', ',')}% do mês)`).join('; ')}. Os números valem só para o tempo em que o monitor esteve ligado.`,
-        M,
-        y + 6,
-        { width: W },
-      );
-  }
-}
-
-function siteHeader(doc: Doc, s: ReportSite, part: string) {
-  label(doc, part, M, M);
-  doc
-    .font('Helvetica-Bold')
-    .fontSize(19)
-    .fillColor(C.text)
-    .text(s.name, M, M + 12, { width: W - 120 });
-  doc
-    .font('Helvetica')
-    .fontSize(8.5)
-    .fillColor(C.muted)
-    .text(s.url, M, doc.y + 1, { width: W - 120, link: s.url });
-  const after = doc.y; // o selo abaixo mexe na posição do texto; guarda antes
-  const sit = situation(s);
-  doc.font('Helvetica-Bold').fontSize(8);
-  const w = doc.widthOfString(sit.word) + 18;
-  pill(doc, sit.word, sit.tone, M + W - w, M + 18);
-  return after + 16;
 }
 
 function compareLine(s: ReportSite, from: number): string | null {
   const prev = s.previous;
   const parts: string[] = [];
-  const prevMonth = new Date(
-    new Date(from).getFullYear(),
-    new Date(from).getMonth() - 1,
-    1,
-  ).toLocaleDateString('pt-BR', { month: 'long' });
+  const d0 = new Date(from);
+  const prevMonth = new Date(d0.getFullYear(), d0.getMonth() - 1, 1).toLocaleDateString('pt-BR', {
+    month: 'long',
+  });
   if (prev.uptime !== null && s.uptime !== null) {
     const d = s.uptime - prev.uptime;
     parts.push(
@@ -615,247 +197,832 @@ function compareLine(s: ReportSite, from: number): string | null {
   return parts.length ? `Comparado com ${prevMonth}: ${parts.join(' e ')}.` : null;
 }
 
-function sitePageNumbers(doc: Doc, data: ReportData, s: ReportSite) {
+// ─── elementos de identidade ─────────────────────────────────────────────────
+
+/** Gerador pseudoaleatório com semente: o desenho dos pixels é sempre o mesmo para o mesmo relatório. */
+function rng(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Campo de quadradinhos em gelo, cada vez mais denso e claro em direção à base (como o fundo do painel). */
+function pixelField(doc: Doc, x: number, y: number, w: number, h: number, seed: number, strength = 1) {
+  const rand = rng(seed);
+  const pitch = 6.4;
+  const size = 2.2;
+  for (let yy = 0; yy < h; yy += pitch) {
+    const depth = (yy / h) ** 1.8;
+    for (let xx = 0; xx < w; xx += pitch) {
+      const n = rand();
+      if (n > 0.1 + depth * 0.62) continue;
+      // opacidade em degraus: poucos estados gráficos diferentes, arquivo bem menor
+      const a = Math.round(Math.min(0.85, (0.06 + n * 0.25) * (0.35 + depth * 2.2) * strength) * 12) / 12;
+      if (a <= 0) continue;
+      doc
+        .rect(x + xx, y + yy, size, size)
+        .fillOpacity(a)
+        .fill(C.ice);
+    }
+  }
+  doc.fillOpacity(1);
+}
+
+function logo(doc: Doc, x: number, y: number, height: number, onDark: boolean) {
+  const scale = height / BRAND.height;
+  doc.save().translate(x, y).scale(scale);
+  doc.path(BRAND.wordmark).fill(onDark ? '#f4f4f5' : C.ink);
+  BRAND.arcs.forEach((d, i) => {
+    doc
+      .path(d)
+      .lineWidth(2.3)
+      .lineCap('round')
+      .strokeOpacity(BRAND.arcOpacity[i])
+      .strokeColor(onDark ? C.ice : C.iceDark)
+      .stroke();
+  });
+  doc.restore();
+  doc.strokeOpacity(1);
+}
+
+const square = (doc: Doc, x: number, y: number, size: number, color: string) =>
+  doc.rect(x, y, size, size).fill(color);
+
+function kicker(doc: Doc, text: string, x: number, y: number, color: string = C.iceDark, width = W) {
+  doc
+    .font(MD)
+    .fontSize(7.4)
+    .fillColor(color)
+    .text(text.toUpperCase(), x, y, { width, characterSpacing: 1.4 });
+}
+
+/** Título de seção numerado: "02  Velocidade dia a dia". */
+function section(doc: Doc, n: number, title: string, y: number, sub?: string) {
+  doc
+    .font(MD)
+    .fontSize(8)
+    .fillColor(C.iceDark)
+    .text(String(n).padStart(2, '0'), M, y + 2.5, { lineBreak: false });
+  doc
+    .font(SB)
+    .fontSize(12)
+    .fillColor(C.ink)
+    .text(title, M + 22, y, { width: W - 22 });
+  let yy = doc.y + 1.5;
+  if (sub) {
+    doc
+      .font(R)
+      .fontSize(8.4)
+      .fillColor(C.muted)
+      .text(sub, M + 22, yy, { width: W - 22 });
+    yy = doc.y;
+  }
+  return yy + 10;
+}
+
+/** Cabeçalho das páginas internas: marca, seção e período. */
+function pageHeader(doc: Doc, part: string, data: ReportData) {
+  logo(doc, M, 28, 16, false);
+  doc
+    .font(MD)
+    .fontSize(7.2)
+    .fillColor(C.faint)
+    .text(`${part.toUpperCase()}  ·  ${periodLabel(data.from).toUpperCase()}`, M, 33, {
+      width: W,
+      align: 'right',
+      characterSpacing: 1.2,
+    });
+  doc.rect(M, 54, W, 0.6).fill(C.rule);
+  return 74;
+}
+
+function tag(doc: Doc, text: string, tone: Tone, xRight: number, y: number) {
+  doc.font(MD).fontSize(8.6);
+  const w = doc.widthOfString(text);
+  square(doc, xRight - w - 12, y + 2.2, 6.5, TONE[tone]);
+  doc.fillColor(TONE[tone]).text(text, xRight - w, y, { lineBreak: false });
+}
+
+// ─── capa ─────────────────────────────────────────────────────────────────
+
+function cover(doc: Doc, data: ReportData) {
+  doc.rect(0, 0, PW, PH).fill(C.night);
+  pixelField(doc, 0, PH * 0.42, PW, PH * 0.58, data.from % 9973, 1.1);
+  logo(doc, M, M, 30, true);
+  // (o rótulo da capa fica acima do título, longe da logo)
+  doc
+    .font(R)
+    .fontSize(7.4)
+    .fillColor(C.muted)
+    .text(periodLabel(data.from).toUpperCase(), M, M + 11, {
+      width: W,
+      align: 'right',
+      characterSpacing: 1.4,
+    });
+  kicker(doc, 'Relatório mensal de monitoramento', M, 172, C.ice, W);
+  doc
+    .font(SB)
+    .fontSize(30)
+    .fillColor('#f4f4f5')
+    .text(data.title, M, 190, { width: W * 0.86, lineGap: -2 });
+  const by = [
+    data.author ? `Preparado por ${data.author}` : null,
+    `Gerado em ${new Date(data.generatedAt).toLocaleDateString('pt-BR')}`,
+  ]
+    .filter(Boolean)
+    .join('   ·   ');
+  doc
+    .font(R)
+    .fontSize(9.5)
+    .fillColor(C.faint)
+    .text(by, M, doc.y + 10, { width: W });
+
+  // o número do mês
+  const withData = data.sites.filter((s) => s.uptime !== null);
+  const avg = withData.length ? withData.reduce((a, s) => a + (s.uptime ?? 0), 0) / withData.length : null;
+  const incidents = data.sites.reduce((a, s) => a + s.incidents.length, 0);
+  const down = data.sites.reduce((a, s) => a + s.downtimeMs, 0);
+  const fast = withData.filter((s) => s.avgResponseMs !== null);
+  const avgMs = fast.length
+    ? Math.round(fast.reduce((a, s) => a + (s.avgResponseMs ?? 0), 0) / fast.length)
+    : null;
+  const y0 = 330;
+  doc.rect(M, y0, 26, 2).fill(C.ice);
+  doc
+    .font(SB)
+    .fontSize(66)
+    .fillColor('#f4f4f5')
+    .text(pct(avg), M - 3, y0 + 14, { lineBreak: false });
+  const n = data.sites.length;
+  doc
+    .font(R)
+    .fontSize(10.5)
+    .fillColor(C.faint)
+    .text(`do tempo no ar · ${n} site${n === 1 ? '' : 's'} monitorado${n === 1 ? '' : 's'}`, M, y0 + 92);
+  const figs: [string, string][] = [
+    ['Quedas', String(incidents)],
+    ['Tempo fora do ar', formatDuration(down)],
+    ['Resposta média', avgMs === null ? '—' : `${avgMs} ms`],
+  ];
+  const fw = W / 3;
+  figs.forEach(([label, value], i) => {
+    const x = M + i * fw;
+    if (i) doc.rect(x - 12, y0 + 128, 0.6, 40).fill('#27303a');
+    kicker(doc, label, x, y0 + 128, C.ice, fw - 20);
+    doc
+      .font(SB)
+      .fontSize(21)
+      .fillColor('#f4f4f5')
+      .text(value, x, y0 + 142, { width: fw - 20, lineBreak: false });
+  });
+
+  // os sites do relatório, sobre os pixels
+  const list = data.sites.slice(0, 8);
+  const rowH = 21;
+  const panelH = 34 + Math.max(1, list.length) * rowH;
+  const py = PH - M - 30 - panelH;
+  doc.rect(M, py, W, panelH).fillOpacity(0.88).fill(C.nightPanel).fillOpacity(1);
+  doc.rect(M, py, W, 0.6).fill('#27303a');
+  kicker(doc, 'Sites neste relatório', M + 16, py + 13, C.faint, W - 32);
+  if (list.length === 0) {
+    doc
+      .font(R)
+      .fontSize(9.5)
+      .fillColor(C.faint)
+      .text('Nenhum site selecionado.', M + 16, py + 31);
+  }
+  list.forEach((s, i) => {
+    const y = py + 31 + i * rowH;
+    const sit = situation(s);
+    square(doc, M + 16, y + 3, 7, TONE[sit.tone]);
+    doc
+      .font(MD)
+      .fontSize(10)
+      .fillColor('#f4f4f5')
+      .text(s.name, M + 32, y, { width: W * 0.5, lineBreak: false, ellipsis: true });
+    doc
+      .font(R)
+      .fontSize(9)
+      .fillColor(C.faint)
+      .text(sit.word, M + W * 0.56, y + 1, { width: W * 0.2, lineBreak: false });
+    doc
+      .font(MD)
+      .fontSize(10)
+      .fillColor('#f4f4f5')
+      .text(pct(s.uptime), M, y, { width: W - 16, align: 'right', lineBreak: false });
+  });
+  if (data.sites.length > list.length) {
+    doc
+      .font(R)
+      .fontSize(8)
+      .fillColor(C.muted)
+      .text(`+ ${data.sites.length - list.length} site(s)`, M + 16, py + panelH - 14);
+  }
+  doc
+    .font(R)
+    .fontSize(7.5)
+    .fillColor('#52525b')
+    .text('uivo · monitoramento de sites', M, PH - M - 6, { lineBreak: false });
+}
+
+// ─── resumo ───────────────────────────────────────────────────────────────
+
+function summaryPage(doc: Doc, data: ReportData) {
   doc.addPage();
-  let y = siteHeader(doc, s, 'Visão geral do mês');
+  let y = pageHeader(doc, 'Resumo', data);
+  const withData = data.sites.filter((s) => s.uptime !== null);
+  const avg = withData.length ? withData.reduce((a, s) => a + (s.uptime ?? 0), 0) / withData.length : null;
+  const incidents = data.sites.reduce((a, s) => a + s.incidents.length, 0);
+  const down = data.sites.reduce((a, s) => a + s.downtimeMs, 0);
+  const fast = withData
+    .filter((s) => s.avgResponseMs !== null)
+    .sort((a, b) => (a.avgResponseMs ?? 0) - (b.avgResponseMs ?? 0));
+  const issues = data.sites.flatMap((s) =>
+    todo(s)
+      .filter((t) => t.tone !== 'good')
+      .map((t) => ({ ...t, site: s.name })),
+  );
+  const n = data.sites.length;
+
+  y = section(doc, 1, 'Em uma frase', y);
+  const headline =
+    avg === null
+      ? `Ainda não há dados de ${monthName(data.from)} para os sites escolhidos.`
+      : `Em ${monthName(data.from)}, ${n === 1 ? 'seu site ficou' : `seus ${n} sites ficaram`} no ar ${pct(avg)} do tempo.`;
+  doc
+    .font(SB)
+    .fontSize(17)
+    .fillColor(C.ink)
+    .text(headline, M + 22, y, { width: W - 22, lineGap: 1 });
+  y = doc.y + 8;
+  const slowest = fast[fast.length - 1];
+  const bullets = [
+    incidents
+      ? `Houve ${incidents} queda${incidents > 1 ? 's' : ''}, somando ${formatDuration(down)} fora do ar.`
+      : 'Nenhuma queda registrada no mês.',
+    fast.length > 1 && fast[0].avgResponseMs !== slowest.avgResponseMs
+      ? `Mais rápido: ${fast[0].name} (${fast[0].avgResponseMs} ms). Mais lento: ${slowest.name} (${slowest.avgResponseMs} ms).`
+      : fast.length
+        ? `Tempo médio de resposta: ${fast[0].avgResponseMs} ms (${speed(fast[0].avgResponseMs).word}).`
+        : null,
+    issues.length
+      ? `${issues.length} ponto${issues.length > 1 ? 's pedem' : ' pede'} atenção (lista abaixo).`
+      : 'Nada pedindo atenção: tudo dentro do esperado.',
+  ].filter((b): b is string => b !== null);
+  for (const b of bullets) {
+    square(doc, M + 22, y + 4.5, 4, C.iceDark);
+    doc
+      .font(R)
+      .fontSize(10)
+      .fillColor(C.ink2)
+      .text(b, M + 34, y, { width: W - 34 });
+    y = doc.y + 4;
+  }
+  y += 18;
+
+  y = section(doc, 2, 'Situação de cada site', y);
+  const cols = [0.36, 0.17, 0.13, 0.1, 0.24].map((c) => c * (W - 22));
+  const heads = ['Site', 'Situação', 'No ar', 'Quedas', 'Velocidade'];
+  let x = M + 22;
+  heads.forEach((h, i) => {
+    doc
+      .font(MD)
+      .fontSize(7.2)
+      .fillColor(C.faint)
+      .text(h.toUpperCase(), x, y, { width: cols[i] - 6, characterSpacing: 1 });
+    x += cols[i];
+  });
+  y += 15;
+  for (const s of data.sites) {
+    if (y > PH - 170) {
+      doc.addPage();
+      y = pageHeader(doc, 'Resumo', data);
+    }
+    doc.rect(M + 22, y - 5, W - 22, 0.5).fill(C.rule);
+    const sit = situation(s);
+    const sp = speed(s.avgResponseMs);
+    x = M + 22;
+    doc
+      .font(MD)
+      .fontSize(10)
+      .fillColor(C.ink)
+      .text(s.name, x, y, { width: cols[0] - 8, lineBreak: false, ellipsis: true });
+    x += cols[0];
+    square(doc, x, y + 2.6, 6.5, TONE[sit.tone]);
+    doc
+      .font(R)
+      .fontSize(9.5)
+      .fillColor(TONE[sit.tone])
+      .text(sit.word, x + 11, y + 0.5, { width: cols[1] - 14, lineBreak: false });
+    x += cols[1];
+    doc
+      .font(MD)
+      .fillColor(C.ink)
+      .text(pct(s.uptime), x, y + 0.5, { width: cols[2] - 6, lineBreak: false });
+    x += cols[2];
+    doc
+      .fillColor(s.incidents.length ? C.red : C.ink)
+      .text(String(s.incidents.length), x, y + 0.5, { width: cols[3] - 6, lineBreak: false });
+    x += cols[3];
+    doc
+      .font(R)
+      .fillColor(TONE[sp.tone])
+      .text(s.avgResponseMs === null ? '—' : `${sp.word}, ${s.avgResponseMs} ms`, x, y + 0.5, {
+        width: cols[4] - 6,
+        lineBreak: false,
+        ellipsis: true,
+      });
+    y += 22;
+  }
+  doc.rect(M + 22, y - 5, W - 22, 0.5).fill(C.rule);
+  y += 20;
+
+  if (issues.length) {
+    y = section(doc, 3, 'Pontos de atenção', y);
+    issues.slice(0, 8).forEach((it, i) => {
+      if (y > PH - 110) return;
+      doc
+        .font(MD)
+        .fontSize(8)
+        .fillColor(TONE[it.tone])
+        .text(String(i + 1).padStart(2, '0'), M + 22, y + 1.5, { lineBreak: false });
+      doc
+        .font(MD)
+        .fontSize(9.6)
+        .fillColor(C.ink)
+        .text(`${it.site}  `, M + 44, y, { width: W - 44, continued: true });
+      doc.font(R).fillColor(C.ink2).text(it.text);
+      y = doc.y + 7;
+    });
+  }
+  const partial = data.sites.filter((s) => s.coverage < 95 && s.checks > 0);
+  if (partial.length && y < PH - 90) {
+    doc
+      .font(R)
+      .fontSize(8)
+      .fillColor(C.amber)
+      .text(
+        `Monitoramento parcial: ${partial.map((s) => `${s.name} (${String(s.coverage).replace('.', ',')}% do mês)`).join('; ')}. Os números valem só para o tempo em que o monitor esteve ligado.`,
+        M + 22,
+        y + 8,
+        { width: W - 22 },
+      );
+  }
+}
+
+// ─── páginas de cada site ────────────────────────────────────────────────────
+
+function siteTitle(doc: Doc, s: ReportSite, y: number) {
+  doc
+    .font(SB)
+    .fontSize(22)
+    .fillColor(C.ink)
+    .text(s.name, M, y, { width: W - 130 });
+  doc
+    .font(R)
+    .fontSize(8.6)
+    .fillColor(C.muted)
+    .text(s.url, M, doc.y + 1, { width: W - 130, link: s.url });
+  const after = doc.y;
+  const sit = situation(s);
+  tag(doc, sit.word, sit.tone, M + W, y + 8);
+  return after + 20;
+}
+
+/** Quatro números do mês, cada um com uma frase do que significa. */
+function figures(doc: Doc, s: ReportSite, y: number) {
   const sp = speed(s.avgResponseMs);
   const sec = securityInfo(s.securityScore);
   const validity = Math.min(s.sslDays ?? 9999, s.domainDays ?? 9999);
   const vTone: Tone = validity === 9999 ? 'none' : validity <= 7 ? 'bad' : validity <= 30 ? 'warn' : 'good';
-  const cw = (W - 3 * 8) / 4;
-  const ch = 96;
-  card(doc, M, y, cw, ch, {
-    title: 'No ar',
-    value: pct(s.uptime),
-    word: uptimeWord(s.uptime),
-    tone: uptimeTone(s.uptime),
-    hint: s.downtimeMs
-      ? `Ficou fora do ar ${formatDuration(s.downtimeMs)} no mês.`
-      : 'Nenhum minuto fora do ar.',
+  const items: { label: string; value: string; word: string; tone: Tone; hint: string }[] = [
+    {
+      label: 'No ar',
+      value: pct(s.uptime),
+      word: uptimeWord(s.uptime),
+      tone: uptimeTone(s.uptime),
+      hint: s.downtimeMs ? `${formatDuration(s.downtimeMs)} fora do ar no mês.` : 'Nenhum minuto fora do ar.',
+    },
+    {
+      label: 'Velocidade',
+      value: s.avgResponseMs === null ? '—' : `${s.avgResponseMs} ms`,
+      word: sp.word,
+      tone: sp.tone,
+      hint: sp.hint,
+    },
+    {
+      label: 'Segurança',
+      value: s.securityScore === null ? '—' : `${s.securityScore}/100`,
+      word: sec.word,
+      tone: sec.tone,
+      hint: s.findings.length ? `${s.findings.length} ajuste(s) na próxima página.` : 'Nada a corrigir.',
+    },
+    {
+      label: 'Próximo vencimento',
+      value: validity === 9999 ? '—' : validity < 0 ? 'vencido' : `${validity} dias`,
+      word: vTone === 'good' ? 'em dia' : vTone === 'none' ? 'não verificado' : 'renovar logo',
+      tone: vTone,
+      hint: 'Certificado SSL ou domínio.',
+    },
+  ];
+  const cw = (W - 3 * 14) / 4;
+  items.forEach((it, i) => {
+    const x = M + i * (cw + 14);
+    doc.rect(x, y, cw, 0.6).fill(C.rule);
+    doc.rect(x, y - 0.7, 22, 2).fill(TONE[it.tone]);
+    kicker(doc, it.label, x, y + 10, C.faint, cw);
+    let size = 21;
+    doc.font(SB);
+    while (size > 12 && doc.fontSize(size).widthOfString(it.value) > cw) size -= 1;
+    doc
+      .fontSize(size)
+      .fillColor(C.ink)
+      .text(it.value, x, y + 23, { width: cw, lineBreak: false });
+    doc
+      .font(MD)
+      .fontSize(8.6)
+      .fillColor(TONE[it.tone])
+      .text(it.word, x, y + 50, { width: cw });
+    doc
+      .font(R)
+      .fontSize(7.8)
+      .fillColor(C.muted)
+      .text(it.hint, x, doc.y + 1.5, { width: cw });
   });
-  card(doc, M + (cw + 8), y, cw, ch, {
-    title: 'Velocidade',
-    value: s.avgResponseMs === null ? '—' : `${s.avgResponseMs} ms`,
-    word: sp.word,
-    tone: sp.tone,
-    hint: sp.hint,
+  return y + 96;
+}
+
+function legend(doc: Doc, y: number, items: [string, string][]) {
+  let x = M;
+  doc.font(R).fontSize(7);
+  for (const [color, text] of items) {
+    square(doc, x, y + 1.3, 5.5, color);
+    doc.fillColor(C.muted).text(text, x + 9, y, { lineBreak: false });
+    x += 9 + doc.widthOfString(text) + 16;
+  }
+}
+
+/** Um quadradinho por dia, como as 24 h do painel. */
+function dayGrid(doc: Doc, s: ReportSite, y: number) {
+  const n = s.daily.length;
+  const gap = 3;
+  const size = Math.min(16, (W - gap * (n - 1)) / n);
+  s.daily.forEach((u, i) => {
+    square(doc, M + i * (size + gap), y, size, u === null ? C.empty : TONE[uptimeTone(u)]);
   });
-  card(doc, M + 2 * (cw + 8), y, cw, ch, {
-    title: 'Segurança',
-    value: s.securityScore === null ? '—' : `${s.securityScore}/100`,
-    word: sec.word,
-    tone: sec.tone,
-    hint: s.findings.length
-      ? `${s.findings.length} ajuste(s) recomendado(s) na próxima página.`
-      : 'Nenhum problema encontrado.',
+  doc.font(R).fontSize(6.8).fillColor(C.faint);
+  s.daily.forEach((_, i) => {
+    if (i === 0 || (i + 1) % 5 === 0 || i === n - 1)
+      doc.text(String(i + 1), M + i * (size + gap) - 3, y + size + 4, { width: size + 6, align: 'center' });
   });
-  card(doc, M + 3 * (cw + 8), y, cw, ch, {
-    title: 'Validade',
-    value: validity === 9999 ? '—' : validity < 0 ? 'vencido' : `${validity} dias`,
-    word: vTone === 'good' ? 'em dia' : vTone === 'none' ? 'não verificado' : 'renovar logo',
-    tone: vTone,
-    hint: 'Até o próximo vencimento (certificado ou domínio).',
+  legend(doc, y + size + 18, [
+    [C.green, 'no ar o dia todo'],
+    [C.amber, 'instabilidade'],
+    [C.red, 'fora do ar por bastante tempo'],
+    [C.empty, 'sem monitoramento'],
+  ]);
+  return y + size + 34;
+}
+
+/** Velocidade dia a dia: linha em gelo sobre faixas de rápido / aceitável / lento. */
+function speedChart(doc: Doc, s: ReportSite, y: number) {
+  const H = 96;
+  const left = M + 36;
+  const cw = W - 36;
+  const values = s.dailyMs.filter((v): v is number => v !== null);
+  const top = Math.max(800, Math.ceil((Math.max(0, ...values) * 1.25) / 200) * 200);
+  const yOf = (ms: number) => y + H - (Math.min(ms, top) / top) * H;
+  const bands: [number, number, string][] = [
+    [0, 500, '#f0fdf4'],
+    [500, 1500, '#fffbeb'],
+    [1500, top, '#fef2f2'],
+  ];
+  for (const [a, b, color] of bands) {
+    if (a >= top) continue;
+    doc.rect(left, yOf(Math.min(b, top)), cw, yOf(a) - yOf(Math.min(b, top))).fill(color);
+  }
+  doc.font(R).fontSize(6.8).fillColor(C.faint);
+  for (const v of [0, top / 2, top]) {
+    doc.text(`${Math.round(v)} ms`, M - 6, yOf(v) - 3, { width: 36, align: 'right' });
+    doc.rect(left, yOf(v), cw, 0.4).fill(C.rule);
+  }
+  const n = s.dailyMs.length;
+  const xOf = (i: number) => left + (n === 1 ? cw / 2 : (i / (n - 1)) * cw);
+  // área sob a linha e a linha, com quebras nos dias sem dados
+  const runs: number[][] = [];
+  let cur: number[] = [];
+  s.dailyMs.forEach((v, i) => {
+    if (v === null) {
+      if (cur.length) runs.push(cur);
+      cur = [];
+    } else cur.push(i);
   });
-  y += ch + 12;
+  if (cur.length) runs.push(cur);
+  for (const run of runs) {
+    doc.moveTo(xOf(run[0]), y + H);
+    for (const i of run) doc.lineTo(xOf(i), yOf(s.dailyMs[i] ?? 0));
+    doc
+      .lineTo(xOf(run[run.length - 1]), y + H)
+      .closePath()
+      .fillOpacity(0.14)
+      .fill(C.iceDark)
+      .fillOpacity(1);
+    doc.moveTo(xOf(run[0]), yOf(s.dailyMs[run[0]] ?? 0));
+    for (const i of run) doc.lineTo(xOf(i), yOf(s.dailyMs[i] ?? 0));
+    doc.lineWidth(1.5).lineJoin('round').strokeColor(C.iceDark).stroke();
+  }
+  doc.font(R).fontSize(6.8).fillColor(C.faint);
+  s.dailyMs.forEach((_, i) => {
+    if (i === 0 || (i + 1) % 5 === 0 || i === n - 1)
+      doc.text(String(i + 1), xOf(i) - 6, y + H + 4, { width: 12, align: 'center' });
+  });
+  legend(doc, y + H + 18, [
+    ['#bbf7d0', 'rápido (até 0,5 s)'],
+    ['#fde68a', 'aceitável (até 1,5 s)'],
+    ['#fecaca', 'lento'],
+    [C.iceDark, 'tempo médio do dia'],
+  ]);
+  return y + H + 34;
+}
+
+/** 24 quadradinhos, um por hora do dia: quanto mais escuro, mais lento; as 3 piores em âmbar. */
+function hourStrip(doc: Doc, s: ReportSite, y: number) {
+  const valid = s.hourlyMs.filter((v): v is number => v !== null);
+  if (valid.length < 6) {
+    doc
+      .font(R)
+      .fontSize(9)
+      .fillColor(C.muted)
+      .text('Ainda não há dados suficientes para comparar os horários.', M, y);
+    return doc.y + 10;
+  }
+  const max = Math.max(...valid);
+  const min = Math.min(...valid);
+  const gap = 3;
+  const size = (W - gap * 23) / 24;
+  const slowest = [...s.hourlyMs.entries()]
+    .filter(([, v]) => v !== null)
+    .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
+    .slice(0, 3)
+    .map(([h]) => h);
+  const shades = ['#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#0ea5e9', '#0284c7'];
+  s.hourlyMs.forEach((v, h) => {
+    const x = M + h * (size + gap);
+    if (v === null) {
+      square(doc, x, y, size, C.empty);
+      return;
+    }
+    const k = Math.round(((v - min) / Math.max(1, max - min)) * (shades.length - 1));
+    square(doc, x, y, size, slowest.includes(h) ? C.amber : shades[k]);
+  });
+  doc.font(R).fontSize(6.8).fillColor(C.faint);
+  for (let h = 0; h < 24; h += 3)
+    doc.text(`${h}h`, M + h * (size + gap) - 2, y + size + 4, { width: size + 4, align: 'center' });
+  const hours = [...slowest].sort((a, b) => a - b).map((h) => `${h}h`);
+  const avgSlow = Math.round(slowest.reduce((a, h) => a + (s.hourlyMs[h] ?? 0), 0) / slowest.length);
+  doc
+    .font(MD)
+    .fontSize(9.2)
+    .fillColor(C.ink)
+    .text(`Mais lento às ${hours.join(', ')}: média de ${avgSlow} ms. `, M, y + size + 20, {
+      width: W,
+      continued: true,
+    })
+    .font(R)
+    .fillColor(C.ink2)
+    .text(
+      max - min < 80
+        ? 'A diferença ao longo do dia é pequena: o site se comporta bem em qualquer horário.'
+        : 'Costumam ser os horários de mais movimento; se for o seu pico de vendas, vale melhorar a hospedagem.',
+    );
+  return doc.y + 10;
+}
+
+function siteOverview(doc: Doc, data: ReportData, s: ReportSite) {
+  doc.addPage();
+  let y = pageHeader(doc, 'Visão geral do site', data);
+  y = siteTitle(doc, s, y);
+  y = figures(doc, s, y);
   const cmp = compareLine(s, data.from);
   if (cmp) {
-    doc.font('Helvetica').fontSize(9).fillColor(C.text).text(cmp, M, y, { width: W });
-    y = doc.y + 4;
+    doc.rect(M, y, W, 26).fill(C.wash);
+    doc.rect(M, y, 2, 26).fill(C.iceDark);
+    doc
+      .font(R)
+      .fontSize(9)
+      .fillColor(C.ink2)
+      .text(cmp, M + 12, y + 8.5, { width: W - 20, lineBreak: false, ellipsis: true });
+    y += 38;
   }
   if (s.coverage < 95 && s.checks > 0) {
     doc
-      .font('Helvetica')
+      .font(R)
       .fontSize(8)
       .fillColor(C.amber)
       .text(
         `Monitorado em ${String(s.coverage).replace('.', ',')}% do mês: os números valem só para esse período.`,
         M,
         y,
-        { width: W },
+        {
+          width: W,
+        },
       );
-    y = doc.y + 4;
+    y = doc.y + 8;
   }
-  y += 10;
-  y = heading(
-    doc,
-    'Disponibilidade dia a dia',
-    y,
-    'Cada barra é um dia: quanto mais alta e verde, mais tempo o site ficou no ar.',
-  );
-  y = dailyBars(doc, s, y);
   y += 6;
-  y = heading(
+  y = section(doc, 1, 'Disponibilidade dia a dia', y, 'Cada quadrado é um dia do mês.');
+  y = dayGrid(doc, s, y);
+  y += 4;
+  y = section(
     doc,
+    2,
     'Velocidade dia a dia',
     y,
-    'Tempo médio que o site levou para responder em cada dia (quanto mais baixo, melhor).',
+    'Tempo médio de resposta em cada dia. Quanto mais baixo, melhor.',
   );
   y = speedChart(doc, s, y);
-  y += 6;
-  y = heading(
-    doc,
-    'Horários mais lentos',
-    y,
-    'Tempo médio de resposta em cada hora do dia, somando o mês todo.',
-  );
-  hourChart(doc, s, y);
+  y += 4;
+  y = section(doc, 3, 'Horários mais lentos', y, 'Cada quadrado é uma hora do dia, somando o mês todo.');
+  hourStrip(doc, s, y);
 }
 
-function incidentLine(doc: Doc, inc: ReportIncident, y: number) {
-  doc.rect(M, y + 3, 6, 6).fill(inc.end ? C.red : C.amber);
+function incidentRow(doc: Doc, inc: ReportIncident, y: number) {
+  doc.rect(M + 22, y - 5, W - 22, 0.5).fill(C.rule);
+  square(doc, M + 22, y + 2.5, 6, inc.end ? C.red : C.amber);
   doc
-    .font('Helvetica-Bold')
-    .fontSize(9)
-    .fillColor(C.text)
-    .text(dateTime(inc.start), M + 14, y, { width: 150, lineBreak: false });
+    .font(MD)
+    .fontSize(9.2)
+    .fillColor(C.ink)
+    .text(dateTime(inc.start), M + 34, y, { width: 120, lineBreak: false });
   doc
-    .font('Helvetica')
-    .fillColor(C.text)
-    .text(inc.end ? `fora do ar por ${formatDuration(inc.durationMs)}` : 'ainda fora do ar', M + 165, y, {
-      width: 120,
+    .font(R)
+    .fillColor(C.ink)
+    .text(inc.end ? `${formatDuration(inc.durationMs)} fora do ar` : 'ainda fora do ar', M + 158, y, {
+      width: 110,
       lineBreak: false,
     });
-  doc.fillColor(C.muted).text(plainReason(inc.reason), M + 290, y, { width: W - 290 });
-  return Math.max(doc.y, y + 12) + 5;
+  doc.fillColor(C.muted).text(plainReason(inc.reason), M + 272, y, { width: W - 272 });
+  return Math.max(doc.y, y + 12) + 9;
 }
 
 const SEV_WORD: Record<Severity, { word: string; tone: Tone }> = {
-  critical: { word: 'urgente', tone: 'bad' },
-  high: { word: 'importante', tone: 'bad' },
-  medium: { word: 'recomendado', tone: 'warn' },
-  low: { word: 'opcional', tone: 'none' },
+  critical: { word: 'Urgente', tone: 'bad' },
+  high: { word: 'Importante', tone: 'bad' },
+  medium: { word: 'Recomendado', tone: 'warn' },
+  low: { word: 'Opcional', tone: 'none' },
 };
 
-function sitePageDetails(doc: Doc, s: ReportSite) {
+function siteDetails(doc: Doc, data: ReportData, s: ReportSite) {
   doc.addPage();
-  let y = siteHeader(doc, s, 'Detalhes e próximos passos');
+  let y = pageHeader(doc, 'Próximos passos', data);
+  y = siteTitle(doc, s, y);
 
-  y = heading(doc, 'O que fazer agora', y);
-  for (const t of todo(s)) {
-    doc.roundedRect(M, y, W, 1, 0).fill(C.soft);
+  y = section(doc, 4, 'O que fazer agora', y);
+  todo(s).forEach((t, i) => {
     doc
-      .rect(M, y + 7, 7, 7)
-      .lineWidth(1)
-      .strokeColor(TONE[t.tone].fg)
+      .rect(M + 22, y - 1, 16, 16)
+      .lineWidth(0.8)
+      .strokeColor(TONE[t.tone])
       .stroke();
     doc
-      .font('Helvetica')
-      .fontSize(9.5)
-      .fillColor(C.text)
-      .text(t.text, M + 16, y + 5, { width: W - 16 });
-    y = doc.y + 7;
-  }
-  y += 10;
+      .font(MD)
+      .fontSize(7.5)
+      .fillColor(TONE[t.tone])
+      .text(String(i + 1), M + 22, y + 3.5, { width: 16, align: 'center' });
+    doc
+      .font(R)
+      .fontSize(9.8)
+      .fillColor(C.ink)
+      .text(t.text, M + 48, y + 1, { width: W - 48 });
+    y = Math.max(doc.y, y + 16) + 9;
+  });
+  y += 12;
 
-  y = heading(
+  y = section(
     doc,
+    5,
     `Quedas no mês (${s.incidents.length})`,
     y,
     s.incidents.length ? 'Quando o site ficou fora do ar, por quanto tempo e por quê.' : undefined,
   );
   if (s.incidents.length === 0) {
     doc
-      .font('Helvetica')
-      .fontSize(9.5)
+      .font(R)
+      .fontSize(9.8)
       .fillColor(C.green)
-      .text('Nenhuma queda: o site respondeu o mês inteiro.', M, y);
-    y = doc.y + 16;
+      .text('Nenhuma queda: o site respondeu o mês inteiro.', M + 22, y);
+    y = doc.y + 20;
   } else {
-    for (const inc of s.incidents.slice(0, 10)) y = incidentLine(doc, inc, y);
+    for (const inc of s.incidents.slice(0, 10)) y = incidentRow(doc, inc, y);
+    doc.rect(M + 22, y - 5, W - 22, 0.5).fill(C.rule);
     if (s.incidents.length > 10) {
       doc
-        .font('Helvetica')
+        .font(R)
         .fontSize(8)
         .fillColor(C.muted)
-        .text(`+ ${s.incidents.length - 10} queda(s) no período`, M, y);
-      y = doc.y + 6;
+        .text(`+ ${s.incidents.length - 10} queda(s) no período`, M + 22, y);
+      y = doc.y + 4;
     }
-    y += 10;
+    y += 14;
   }
 
-  y = heading(
+  y = section(
     doc,
-    'Segurança: o que pedir ao seu desenvolvedor',
+    6,
+    'Segurança: o que pedir ao desenvolvedor',
     y,
-    s.findings.length
-      ? 'Pode encaminhar esta lista: cada item já diz o que precisa ser ajustado.'
-      : undefined,
+    s.findings.length ? 'Pode encaminhar esta lista: cada item já diz o que ajustar.' : undefined,
   );
   if (s.securityScore === null) {
-    doc.font('Helvetica').fontSize(9.5).fillColor(C.muted).text('O site ainda não foi auditado.', M, y);
-    y = doc.y + 16;
+    doc
+      .font(R)
+      .fontSize(9.8)
+      .fillColor(C.muted)
+      .text('O site ainda não foi auditado.', M + 22, y);
+    y = doc.y + 20;
   } else if (s.findings.length === 0) {
     doc
-      .font('Helvetica')
-      .fontSize(9.5)
+      .font(R)
+      .fontSize(9.8)
       .fillColor(C.green)
-      .text('Nenhum problema de segurança encontrado na última verificação.', M, y);
-    y = doc.y + 16;
+      .text('Nenhum problema encontrado na última verificação.', M + 22, y);
+    y = doc.y + 20;
   } else {
     const order: Severity[] = ['critical', 'high', 'medium', 'low'];
     for (const f of [...s.findings]
       .sort((a, b) => order.indexOf(a.severity) - order.indexOf(b.severity))
       .slice(0, 6)) {
-      if (y > doc.page.height - 120) break;
+      if (y > PH - 130) break;
       const sev = SEV_WORD[f.severity];
-      const pw = pill(doc, sev.word, sev.tone, M, y);
+      square(doc, M + 22, y + 3, 6, TONE[sev.tone]);
       doc
-        .font('Helvetica-Bold')
-        .fontSize(9.5)
-        .fillColor(C.text)
-        .text(f.title, M + pw + 8, y + 3, { width: W - pw - 8 });
+        .font(MD)
+        .fontSize(7.2)
+        .fillColor(TONE[sev.tone])
+        .text(sev.word.toUpperCase(), M + 34, y + 2, { width: 80, characterSpacing: 0.8, lineBreak: false });
       doc
-        .font('Helvetica')
-        .fontSize(8.5)
-        .fillColor(C.muted)
-        .text(f.fix, M + pw + 8, doc.y + 1, { width: W - pw - 8 });
-      y = doc.y + 9;
+        .font(MD)
+        .fontSize(9.8)
+        .fillColor(C.ink)
+        .text(f.title, M + 118, y, { width: W - 118 });
+      if (f.fix)
+        doc
+          .font(R)
+          .fontSize(8.6)
+          .fillColor(C.muted)
+          .text(f.fix, M + 118, doc.y + 1.5, { width: W - 118 });
+      y = doc.y + 11;
     }
-    y += 4;
+    y += 6;
   }
 
-  if (y < doc.page.height - 110) {
-    y = heading(doc, 'Vencimentos', y);
+  if (y < PH - 120) {
+    y = section(doc, 7, 'Vencimentos', y);
     const row = (name: string, days: number | null, what: string) => {
       const tone: Tone = days === null ? 'none' : days <= 7 ? 'bad' : days <= 30 ? 'warn' : 'good';
-      doc.rect(M, y + 3, 6, 6).fill(TONE[tone].fg);
+      doc.rect(M + 22, y - 5, W - 22, 0.5).fill(C.rule);
+      square(doc, M + 22, y + 2.5, 6, TONE[tone]);
       doc
-        .font('Helvetica-Bold')
-        .fontSize(9.5)
-        .fillColor(C.text)
-        .text(name, M + 14, y, { width: 150, lineBreak: false });
+        .font(MD)
+        .fontSize(9.6)
+        .fillColor(C.ink)
+        .text(name, M + 34, y, { width: 120, lineBreak: false });
       doc
-        .font('Helvetica')
-        .fillColor(TONE[tone].fg)
-        .text(days === null ? 'não verificado' : days < 0 ? 'vencido' : `vence em ${days} dias`, M + 165, y, {
+        .font(R)
+        .fillColor(TONE[tone])
+        .text(days === null ? 'não verificado' : days < 0 ? 'vencido' : `vence em ${days} dias`, M + 158, y, {
           width: 110,
           lineBreak: false,
         });
-      doc.fillColor(C.muted).text(what, M + 290, y, { width: W - 290 });
-      y = doc.y + 6;
+      doc.fillColor(C.muted).text(what, M + 272, y, { width: W - 272 });
+      y = Math.max(doc.y, y + 12) + 9;
     };
     row(
       'Certificado SSL',
       s.sslDays,
-      'É o "cadeado" do navegador. Sem ele, aparece o aviso "site não seguro".',
+      'O "cadeado" do navegador. Sem ele, aparece o aviso "site não seguro".',
     );
     row(
       'Domínio',
       s.domainDays,
-      'É o endereço do site. Se vencer, o site sai do ar e o nome pode ser perdido.',
+      'O endereço do site. Se vencer, o site sai do ar e o nome pode ser perdido.',
     );
+    doc.rect(M + 22, y - 5, W - 22, 0.5).fill(C.rule);
   }
 }
 
-function glossary(doc: Doc) {
+// ─── glossário ─────────────────────────────────────────────────────────────
+
+function glossary(doc: Doc, data: ReportData) {
   doc.addPage();
-  label(doc, 'Para consulta', M, M);
-  doc
-    .font('Helvetica-Bold')
-    .fontSize(19)
-    .fillColor(C.text)
-    .text('Como ler este relatório', M, M + 12);
-  let y = doc.y + 16;
+  let y = pageHeader(doc, 'Glossário', data);
+  doc.font(SB).fontSize(22).fillColor(C.ink).text('Como ler este relatório', M, y);
+  y = doc.y + 22;
   const items: [string, string][] = [
     [
       'No ar (disponibilidade)',
@@ -863,7 +1030,7 @@ function glossary(doc: Doc) {
     ],
     [
       'Queda',
-      'Período em que o site não abriu. O Uivo só conta como queda depois de duas tentativas seguidas sem resposta, para evitar alarme falso.',
+      'Período em que o site não abriu. Só conta como queda depois de duas tentativas seguidas sem resposta, para evitar alarme falso.',
     ],
     [
       'Velocidade (tempo de resposta)',
@@ -886,29 +1053,33 @@ function glossary(doc: Doc) {
       'Quando o monitor ficou desligado parte do mês, os números valem só para o tempo monitorado; o relatório avisa quando isso acontece.',
     ],
   ];
-  for (const [term, text] of items) {
-    doc.rect(M, y + 2, 3, 12).fill(C.ice);
+  items.forEach(([term, text], i) => {
     doc
-      .font('Helvetica-Bold')
-      .fontSize(10.5)
-      .fillColor(C.text)
-      .text(term, M + 12, y);
+      .font(MD)
+      .fontSize(8)
+      .fillColor(C.iceDark)
+      .text(String(i + 1).padStart(2, '0'), M, y + 2, { lineBreak: false });
     doc
-      .font('Helvetica')
-      .fontSize(9.3)
-      .fillColor(C.muted)
-      .text(text, M + 12, doc.y + 2, { width: W - 12, lineGap: 1.5 });
-    y = doc.y + 14;
-  }
+      .font(SB)
+      .fontSize(11)
+      .fillColor(C.ink)
+      .text(term, M + 26, y);
+    doc
+      .font(R)
+      .fontSize(9.4)
+      .fillColor(C.ink2)
+      .text(text, M + 26, doc.y + 3, { width: W - 26, lineGap: 1.6 });
+    y = doc.y + 16;
+  });
   doc
-    .font('Helvetica')
-    .fontSize(8.5)
+    .font(R)
+    .fontSize(8.4)
     .fillColor(C.faint)
     .text(
       'Os dados vêm de checagens automáticas feitas de fora do site, como um visitante faria, várias vezes por hora.',
-      M,
-      y + 8,
-      { width: W },
+      M + 26,
+      y + 6,
+      { width: W - 26 },
     );
 }
 
@@ -927,38 +1098,37 @@ export function renderReport(data: ReportData, options: { compress?: boolean } =
         Subject: periodLabel(data.from),
       },
     });
+    doc.registerFont(R, path.join(FONTS, 'Geist-Regular.ttf'));
+    doc.registerFont(MD, path.join(FONTS, 'Geist-Medium.ttf'));
+    doc.registerFont(SB, path.join(FONTS, 'Geist-SemiBold.ttf'));
     const chunks: Buffer[] = [];
     doc.on('data', (c: Buffer) => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    coverPage(doc, data);
+    cover(doc, data);
+    summaryPage(doc, data);
     for (const s of data.sites) {
-      sitePageNumbers(doc, data, s);
-      sitePageDetails(doc, s);
+      siteOverview(doc, data, s);
+      siteDetails(doc, data, s);
     }
-    glossary(doc);
+    glossary(doc, data);
 
-    // Rodapé em todas as páginas
+    // Rodapé das páginas internas (a capa não tem)
     const range = doc.bufferedPageRange();
-    for (let i = range.start; i < range.start + range.count; i++) {
+    for (let i = range.start + 1; i < range.start + range.count; i++) {
       doc.switchToPage(i);
       // o rodapé fica abaixo da margem: sem zerá-la, o pdfkit criaria uma página nova para ele
       const bottom = doc.page.margins.bottom;
       doc.page.margins.bottom = 0;
-      const y = doc.page.height - 30;
+      const y = PH - 30;
+      doc.rect(M, y - 9, W, 0.5).fill(C.rule);
       doc
-        .moveTo(M, y - 8)
-        .lineTo(doc.page.width - M, y - 8)
-        .lineWidth(0.5)
-        .strokeColor(C.line)
-        .stroke();
-      doc
-        .font('Helvetica')
-        .fontSize(7.5)
+        .font(R)
+        .fontSize(7.2)
         .fillColor(C.faint)
-        .text(`${data.title} · ${periodLabel(data.from)} · gerado pelo Uivo`, M, y, { lineBreak: false })
-        .text(`página ${i - range.start + 1} de ${range.count}`, M, y, {
+        .text(`${data.title}  ·  ${periodLabel(data.from)}`, M, y, { lineBreak: false })
+        .text(`${i - range.start + 1} / ${range.count}`, M, y, {
           width: W,
           align: 'right',
           lineBreak: false,

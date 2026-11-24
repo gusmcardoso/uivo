@@ -44,7 +44,7 @@ export function StatusPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
       <PixelBackground />
-      <p className="font-mono text-xs text-zinc-500">
+      <p className="text-xs text-zinc-500">
         <span className="text-brand">$</span> uivo status --público<span className="cursor-blink">_</span>
       </p>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-100">{data?.title ?? 'Status'}</h1>
@@ -122,7 +122,7 @@ export function StatusPage() {
         </section>
       )}
 
-      <div className="mt-12 flex items-center justify-center gap-2 font-mono text-[11px] text-zinc-500">
+      <div className="mt-12 flex items-center justify-center gap-2 text-[11px] text-zinc-500">
         monitorado com
         <a
           href="https://github.com/gusmcardoso/uivo"
