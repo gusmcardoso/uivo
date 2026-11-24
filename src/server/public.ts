@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import type { FastifyInstance } from 'fastify';
+import { renderBadge } from './badge.ts';
 import type { Site } from './db.ts';
 import { healthScore } from './health.ts';
 import { DAY } from './util.ts';
@@ -20,6 +21,35 @@ interface DayRow {
 
 /** Rotas sem login: página de status (só sites marcados como públicos) e métricas do Prometheus. */
 export function registerPublicRoutes(app: FastifyInstance, db: DatabaseSync, options: PublicOptions): void {
+  // ─── Selo "monitorado com uivo" (só para sites marcados como públicos) ─────────
+  app.get<{ Params: { file: string }; Querystring: { tema?: string } }>(
+    '/badge/:file',
+    async (req, reply) => {
+      const m = /^(\d+)\.svg$/.exec(req.params.file);
+      const site = m
+        ? (db.prepare('SELECT id, name, status FROM sites WHERE id = ? AND public = 1').get(Number(m[1])) as
+            | { id: number; name: string; status: 'up' | 'down' | 'unknown' }
+            | undefined)
+        : undefined;
+      // site inexistente e site privado respondem igual: o selo não revela quais IDs existem
+      if (!site) return reply.code(404).send({ error: 'Selo não encontrado.' });
+      const row = db
+        .prepare('SELECT AVG(ok) * 100 AS u FROM checks WHERE site_id = ? AND at >= ?')
+        .get(site.id, Date.now() - 30 * 86_400_000) as { u: number | null };
+      const svg = renderBadge({
+        name: site.name,
+        status: site.status,
+        uptime: row.u === null ? null : Math.floor(row.u * 100) / 100,
+        theme: req.query.tema === 'claro' ? 'claro' : 'escuro',
+      });
+      return reply
+        .header('content-type', 'image/svg+xml; charset=utf-8')
+        .header('cache-control', 'public, max-age=300')
+        .header('cross-origin-resource-policy', 'cross-origin')
+        .send(svg);
+    },
+  );
+
   // ─── Página de status pública ─────────────────────────────────────────────
   app.get('/api/public/status', async (_req, reply) => {
     const now = Date.now();

@@ -22,6 +22,11 @@ import { StatusPage } from './components/StatusPage.tsx';
 import { daysUntil, expiryTone, formatUptime, hostOf, relativeTime } from './format.ts';
 
 type Session = 'loading' | 'setup' | 'login' | 'in';
+
+const routeSiteId = () => {
+  const m = /^\/sites\/(\d+)\/?$/.exec(window.location.pathname);
+  return m ? Number(m[1]) : null;
+};
 const REFRESH_MS = 30_000;
 
 export function App() {
@@ -65,7 +70,8 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [editing, setEditing] = useState<Site | 'new' | null>(null);
   const [reporting, setReporting] = useState(false);
-  const [open, setOpen] = useState<number | null>(null);
+  // endereço próprio por site: /sites/:id (o voltar do navegador e o F5 funcionam)
+  const [siteId, setSiteId] = useState<number | null>(routeSiteId);
   const [checking, setChecking] = useState<number | null>(null);
 
   const load = useCallback(async () => {
@@ -84,10 +90,18 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
     return () => clearInterval(timer);
   }, [load]);
 
-  /** Logo: volta para o início (nenhum site aberto, topo da página). */
-  function goHome() {
-    setOpen(null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  useEffect(() => {
+    const onPop = () => setSiteId(routeSiteId());
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  /** Vai para um site (ou para o início, com null), atualizando o endereço do navegador. */
+  function navigate(id: number | null) {
+    const target = id === null ? '/' : `/sites/${id}`;
+    if (window.location.pathname !== target) window.history.pushState(null, '', target);
+    setSiteId(id);
+    window.scrollTo({ top: 0 });
   }
 
   async function checkNow(site: Site) {
@@ -100,6 +114,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   async function remove(site: Site) {
     if (!window.confirm(`Remover "${site.name}" e todo o histórico?`)) return;
     await api.deleteSite(site.id);
+    if (siteId === site.id) navigate(null);
     await load();
   }
 
@@ -110,6 +125,11 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
   const list = sites ?? [];
   const bySite = new Map((overview?.sites ?? []).map((o) => [o.id, o]));
+  const current = siteId === null ? null : (list.find((s) => s.id === siteId) ?? null);
+
+  useEffect(() => {
+    document.title = current ? `${current.name} · Uivo` : 'Uivo';
+  }, [current]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -117,7 +137,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
           <button
             type="button"
-            onClick={goHome}
+            onClick={() => navigate(null)}
             className="rounded-sm outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-brand/60"
             aria-label="Uivo: voltar ao início"
             title="Início"
@@ -158,7 +178,29 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-10">
-        {sites !== null && list.length === 0 ? (
+        {siteId !== null ? (
+          sites === null ? null : current ? (
+            <SitePage
+              site={current}
+              ov={bySite.get(current.id)}
+              from={overview?.from}
+              checking={checking === current.id}
+              onBack={() => navigate(null)}
+              onCheck={() => checkNow(current)}
+              onEdit={() => setEditing(current)}
+              onRemove={() => remove(current)}
+              onChange={load}
+            />
+          ) : (
+            <div className="card grid place-items-center gap-3 p-12 text-center">
+              <p className="text-zinc-300">Site não encontrado.</p>
+              <p className="text-sm text-zinc-500">Ele pode ter sido removido.</p>
+              <button type="button" className="btn mt-2" onClick={() => navigate(null)}>
+                ← Voltar para todos os sites
+              </button>
+            </div>
+          )
+        ) : sites !== null && list.length === 0 ? (
           <div className="card grid place-items-center gap-3 p-12 text-center">
             <p className="text-sm text-zinc-300">
               $ uivo status<span className="cursor-blink">_</span>
@@ -172,10 +214,10 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
             </button>
           </div>
         ) : (
-          sites && <Summary sites={list} overview={overview} onOpen={(id) => setOpen(id)} />
+          sites && <Summary sites={list} overview={overview} onOpen={navigate} />
         )}
 
-        {list.length > 0 && (
+        {siteId === null && list.length > 0 && (
           <section className="card mt-4 overflow-hidden">
             <div className="flex items-center justify-between border-b border-zinc-800/80 px-4 py-2.5">
               <span className="panel-title">
@@ -202,14 +244,12 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
                     site={site}
                     ov={bySite.get(site.id)}
                     from={overview?.from}
-                    open={open === site.id}
                     checking={checking === site.id}
-                    onToggle={() => setOpen(open === site.id ? null : site.id)}
+                    onOpen={() => navigate(site.id)}
                     onCheck={() => checkNow(site)}
                     onEdit={() => setEditing(site)}
                     onRemove={() => remove(site)}
                   />
-                  {open === site.id && <SiteDetail site={site} onChange={load} />}
                 </li>
               ))}
             </ul>
@@ -482,9 +522,8 @@ function SiteRow({
   site,
   ov,
   from,
-  open,
   checking,
-  onToggle,
+  onOpen,
   onCheck,
   onEdit,
   onRemove,
@@ -492,9 +531,8 @@ function SiteRow({
   site: Site;
   ov: OverviewSite | undefined;
   from: number | undefined;
-  open: boolean;
   checking: boolean;
-  onToggle: () => void;
+  onOpen: () => void;
   onCheck: () => void;
   onEdit: () => void;
   onRemove: () => void;
@@ -502,17 +540,18 @@ function SiteRow({
   const status = statusOf(site);
   return (
     <div
-      className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2.5 px-4 py-3 transition-colors md:grid-cols-[minmax(0,1fr)_10rem_4.5rem_6rem_3.5rem_4rem_4rem_6.5rem] ${open ? 'bg-zinc-900/60' : 'hover:bg-zinc-900/40'}`}
+      className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2.5 px-4 py-3 transition-colors md:grid-cols-[minmax(0,1fr)_10rem_4.5rem_6rem_3.5rem_4rem_4rem_6.5rem] group hover:bg-zinc-900/40`}
     >
-      <button
-        type="button"
-        onClick={onToggle}
+      <a
+        href={`/sites/${site.id}`}
+        onClick={(e) => {
+          // clique normal abre aqui mesmo; Ctrl/Cmd+clique ou botão do meio abre em outra aba
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+          e.preventDefault();
+          onOpen();
+        }}
         className="flex min-w-0 items-center gap-3 text-left"
-        aria-expanded={open}
       >
-        <span className="text-zinc-600">
-          <IconChevron open={open} />
-        </span>
         <StatusDot status={status} />
         <div className="min-w-0">
           <div className="truncate font-medium text-zinc-100">{site.name}</div>
@@ -523,7 +562,10 @@ function SiteRow({
             ) : null}
           </div>
         </div>
-      </button>
+        <span className="text-zinc-700 transition-colors group-hover:text-zinc-300">
+          <IconChevron open={false} />
+        </span>
+      </a>
       <div className="col-span-2 row-start-2 md:col-span-1 md:row-start-auto">
         <HourStrip ov={ov} from={from} />
       </div>
@@ -591,6 +633,134 @@ function SiteRow({
   );
 }
 
+/** Página própria de um site (/sites/:id): cabeçalho com os números de agora e as abas de detalhe. */
+function SitePage({
+  site,
+  ov,
+  from,
+  checking,
+  onBack,
+  onCheck,
+  onEdit,
+  onRemove,
+  onChange,
+}: {
+  site: Site;
+  ov: OverviewSite | undefined;
+  from: number | undefined;
+  checking: boolean;
+  onBack: () => void;
+  onCheck: () => void;
+  onEdit: () => void;
+  onRemove: () => void;
+  onChange: () => void;
+}) {
+  const status = statusOf(site);
+  return (
+    <div className="space-y-4">
+      <a
+        href="/"
+        onClick={(e) => {
+          if (e.metaKey || e.ctrlKey || e.button !== 0) return;
+          e.preventDefault();
+          onBack();
+        }}
+        className="inline-flex items-center gap-1.5 text-sm text-zinc-500 transition-colors hover:text-zinc-200"
+      >
+        ← Todos os sites
+      </a>
+      <section className="card p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-3">
+              <StatusDot status={status} />
+              <h1 className="truncate text-2xl font-semibold tracking-tight text-zinc-100">{site.name}</h1>
+            </div>
+            <a
+              href={site.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-block truncate text-sm text-zinc-500 hover:text-brand"
+            >
+              {site.url} ↗
+            </a>
+            <p className="mt-1 text-xs text-zinc-500">
+              {site.enabled ? `verificado ${relativeTime(site.last_checked_at)}` : 'monitoramento pausado'}
+              {site.status === 'down' && site.last_error ? (
+                <span className="text-red-400"> · fora do ar: {site.last_error}</span>
+              ) : null}
+            </p>
+          </div>
+          <div className="flex gap-1.5">
+            <button type="button" className="btn" disabled={checking} onClick={onCheck}>
+              <IconRefresh spinning={checking} /> Verificar agora
+            </button>
+            <button
+              type="button"
+              className="btn-icon"
+              title="Editar"
+              aria-label={`Editar ${site.name}`}
+              onClick={onEdit}
+            >
+              <IconEdit />
+            </button>
+            <button
+              type="button"
+              className="btn-icon hover:text-red-400"
+              title="Remover"
+              aria-label={`Remover ${site.name}`}
+              onClick={onRemove}
+            >
+              <IconTrash />
+            </button>
+          </div>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-4 border-t border-zinc-800/80 pt-4 sm:grid-cols-3 lg:grid-cols-[repeat(5,minmax(0,1fr))_14rem]">
+          <Cell always label="Uptime 24 h">
+            {formatUptime(site.uptime_24h)}
+          </Cell>
+          <Cell always label="Resposta">
+            {site.status === 'down' ? (
+              <span className="text-red-400">falhou</span>
+            ) : site.last_response_ms === null ? (
+              '—'
+            ) : (
+              <>
+                {site.last_response_ms} ms{' '}
+                {ov?.responseChange != null && <Trend change={ov.responseChange} />}
+              </>
+            )}
+          </Cell>
+          <Cell always label="Nota de saúde">
+            <span className={scoreTone(site.health_score)}>{site.health_score ?? '—'}</span>
+          </Cell>
+          <Expiry
+            always
+            label="SSL"
+            days={daysUntil(site.ssl_expires_at)}
+            warn={14}
+            title={site.ssl_error ?? site.ssl_issuer ?? undefined}
+          />
+          <Expiry
+            always
+            label="Domínio"
+            days={site.check_domain ? daysUntil(site.domain_expires_at) : null}
+            warn={30}
+            title={site.domain_error ?? undefined}
+          />
+          <div className="col-span-2 sm:col-span-3 lg:col-span-1">
+            <div className="label-xs mb-1.5">Últimas 24 h</div>
+            <HourStrip ov={ov} from={from} />
+          </div>
+        </div>
+      </section>
+      <section className="card overflow-hidden">
+        <SiteDetail site={site} onChange={onChange} />
+      </section>
+    </div>
+  );
+}
+
 function StatusDot({ status }: { status: DotStatus }) {
   const color = {
     up: 'bg-emerald-400',
@@ -617,10 +787,21 @@ function StatusDot({ status }: { status: DotStatus }) {
   );
 }
 
-function Cell({ label, title, children }: { label: string; title?: string; children: React.ReactNode }) {
+function Cell({
+  label,
+  title,
+  children,
+  always = false,
+}: {
+  label: string;
+  title?: string;
+  children: React.ReactNode;
+  /** rótulo visível também no desktop (na lista, o cabeçalho da tabela já mostra) */
+  always?: boolean;
+}) {
   return (
     <div className="text-[13px] tabular-nums" title={title}>
-      <div className="label-xs md:hidden">{label}</div>
+      <div className={`label-xs ${always ? 'mb-1' : 'md:hidden'}`}>{label}</div>
       <div className="text-zinc-200">{children}</div>
     </div>
   );
@@ -631,15 +812,17 @@ function Expiry({
   days,
   warn,
   title,
+  always,
 }: {
   label: string;
   days: number | null;
   warn: number;
   title?: string;
+  always?: boolean;
 }) {
   const tone = expiryTone(days, warn);
   return (
-    <Cell label={label} title={title}>
+    <Cell label={label} title={title} always={always}>
       <span className={tone === 'none' ? 'text-zinc-500' : tone === 'ok' ? 'text-zinc-300' : TONES[tone]}>
         {days === null ? '—' : days < 0 ? 'vencido' : `${days} d`}
       </span>

@@ -40,6 +40,8 @@ Monitores tradicionais perguntam só *"o servidor respondeu?"*. O problema de qu
 | Vencimento de domínio | Via RDAP no servidor oficial de cada extensão (`.br` direto no Registro.br); avisos com 30 e 7 dias |
 | Incidentes | Início, fim e duração de cada queda, com histórico de 90 dias |
 | Painel | Estado agora, o que pede atenção, as últimas 24 h de cada site hora a hora e a variação da resposta contra ontem |
+| **Página de cada site** | Endereço próprio (`/sites/:id`): o voltar do navegador e o F5 funcionam e dá para mandar o link |
+| **Selo "monitorado com uivo"** | Para o rodapé dos seus sites: status ao vivo e uptime de 30 dias, versões para fundo escuro e claro; só para sites públicos |
 | **Detalhe de cada momento** | Passe o mouse no gráfico: resposta média, mínima e máxima, etapas, falhas e o motivo, comparados com o mesmo horário **ontem**, **há 7 dias** e o **normal daquele horário** (média dos 7 dias anteriores) (v0.2.0) |
 | Alertas | Telegram: queda, volta (com duração) e vencimentos, sem repetir aviso |
 | **Auditoria de segurança** | 1x ao dia: arquivos sensíveis expostos (`.env`, `.git`, backups, dumps SQL, `phpinfo`), cabeçalhos de segurança, HTTPS e redirecionamento, TLS obsoleto, conteúdo misto, listagem de diretório e versão do servidor exposta, cada achado com **como corrigir** (v0.1.2) |
@@ -49,7 +51,22 @@ Monitores tradicionais perguntam só *"o servidor respondeu?"*. O problema de qu
 | Página de status pública | `/status`, só com os sites marcados como públicos: estado atual e barras de 90 dias (v0.1.1) |
 | Métricas Prometheus | `/metrics` protegido por token, pronto para o Grafana (v0.1.1) |
 
+### Selo "monitorado com uivo"
+
+![Selo para fundo escuro e para fundo claro](docs/img/selo.webp)
+
+Na página do site, aba **Selo**: escolha a versão (fundo escuro ou claro) e copie o código. O ponto fica verde quando o site está no ar e vermelho se cair; o número é o uptime dos últimos 30 dias. O selo só existe para sites marcados como públicos e mostra apenas nome, situação e uptime (o endereço monitorado e os detalhes continuam privados).
+
+```html
+<a href="https://seu-uivo.exemplo.com/status" target="_blank" rel="noopener">
+  <img src="https://seu-uivo.exemplo.com/badge/1.svg" alt="Monitorado com Uivo" height="24">
+</a>
+```
+
 ### Telas
+
+![Página de um site](docs/img/site.webp)
+
 
 | Celular | Relatório em PDF |
 |---|---|
@@ -214,6 +231,7 @@ npm run lint && npm run typecheck
 - [x] **v0.1.1**: página de status pública e `/metrics` para Prometheus/Grafana
 - [x] **v0.1.2**: auditoria de segurança, detecção de adulteração, nota de saúde e eventos para o Loki
 - [x] **v0.1.3**: tempo por etapa (DNS, conexão, TLS, servidor, download), percentis e diagnóstico
+- [ ] **v0.2.1**: painel em estilo terminal com fundo de pixels, o que pede atenção e as últimas 24 h de cada site, página própria por site, selo "monitorado com uivo", aba Segurança e relatório em PDF refeitos
 - [x] **v0.2.0**: painel redesenhado, detalhe de cada ponto do gráfico comparado com dias anteriores, novo nome (**Uptrue → Uivo**) e nova marca; banco, backups e painéis antigos continuam valendo (o `uptrue.db` é adotado sozinho; veja [migração do servidor](docs/DEPLOY.md#7-migração-de-uma-instalação-uptrue)); `update.sh` faz rollback se a versão nova subir sem os dados
 - [x] **v0.1.10**: relatório mensal em PDF (botão **Relatório** no painel e `/api/reports/monthly`)
 - [x] **v0.1.9**: log do backup limpo, erros do backup externo em português e caminho completo no `--fetch`

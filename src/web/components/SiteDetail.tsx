@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import uPlot from 'uplot';
 import { api, type CheckPoint, type Incident, type Site, type TimingSummary } from '../api.ts';
 import { dateTime, duration, formatUptime } from '../format.ts';
+import { BadgePanel } from './BadgePanel.tsx';
 import { type Hover, MomentTooltip } from './MomentTooltip.tsx';
 import { SecurityPanel } from './SecurityPanel.tsx';
 import { LastCheck, PhaseChart } from './TimingPanel.tsx';
@@ -114,21 +115,22 @@ function ResponseChart({ points, onHover }: { points: CheckPoint[]; onHover?: (h
 }
 
 export function SiteDetail({ site, onChange }: { site: Site; onChange: () => void }) {
-  const [tab, setTab] = useState<'perf' | 'security'>('perf');
+  const [tab, setTab] = useState<'perf' | 'security' | 'badge'>('perf');
   return (
-    <div className="border-t border-zinc-800">
+    <div>
       <div className="flex gap-1 border-b border-zinc-800/80 px-5 pt-2">
         {(
           [
             ['perf', 'Desempenho'],
             ['security', 'Segurança'],
+            ['badge', 'Selo'],
           ] as const
         ).map(([key, label]) => (
           <button
             key={key}
             type="button"
             onClick={() => setTab(key)}
-            className={`border-b-2 px-3 py-2 text-xs lowercase ${tab === key ? 'border-brand text-zinc-100' : 'border-transparent text-zinc-500 hover:text-zinc-200'}`}
+            className={`border-b-2 px-3 py-2 text-sm ${tab === key ? 'border-brand text-zinc-100' : 'border-transparent text-zinc-500 hover:text-zinc-200'}`}
           >
             {label}
           </button>
@@ -136,9 +138,13 @@ export function SiteDetail({ site, onChange }: { site: Site; onChange: () => voi
       </div>
       {tab === 'perf' ? (
         <Performance site={site} />
-      ) : (
+      ) : tab === 'security' ? (
         <div className="p-5">
           <SecurityPanel siteId={site.id} onChange={onChange} />
+        </div>
+      ) : (
+        <div className="p-5">
+          <BadgePanel site={site} onChange={onChange} />
         </div>
       )}
     </div>
