@@ -57,7 +57,7 @@ jobs:
             if curl -fsS http://127.0.0.1:3000/healthz; then echo; exit 0; fi
             sleep 2
           done
-          echo "Uptrue não ficou saudável"; exit 1
+          echo "Uivo não ficou saudável"; exit 1
 
       - name: Teste de fumaça
         run: |
@@ -72,25 +72,25 @@ jobs:
           # primeiro acesso cria o admin e abre sessão
           curl -fsS -c jar -H 'content-type: application/json' \
             -d '{"email":"ci@example.com","password":"ci-password-123"}' $B/api/setup
-          # monitora o próprio Uptrue e força uma checagem
+          # monitora o próprio Uivo e força uma checagem
           id=$(curl -fsS -b jar -H 'content-type: application/json' \
-            -d '{"name":"Uptrue","url":"http://127.0.0.1:3000/healthz","interval_sec":30,"check_domain":false}' \
+            -d '{"name":"Uivo","url":"http://127.0.0.1:3000/healthz","interval_sec":30,"check_domain":false}' \
             $B/api/sites | jq -r .id)
           status=$(curl -fsS -b jar -X POST -H 'content-type: application/json' -d '{}' "$B/api/sites/$id/check" | jq -r .status)
           test "$status" = "up"
           # página de status pública: o site marcado como público aparece, sem login
           curl -fsS -b jar -X PATCH -H 'content-type: application/json' -d '{"public":true}' "$B/api/sites/$id" > /dev/null
-          curl -fsS $B/api/public/status | jq -e '.sites[0].name == "Uptrue"'
+          curl -fsS $B/api/public/status | jq -e '.sites[0].name == "Uivo"'
           # /metrics exige token e exporta no formato Prometheus
           test "$(curl -s -o /dev/null -w '%{http_code}' $B/metrics)" = "401"
           metrics=$(curl -fsS -H "Authorization: Bearer $METRICS_TOKEN" $B/metrics)
-          grep -q 'uptrue_site_up{site="Uptrue"' <<< "$metrics"
+          grep -q 'uivo_site_up{site="Uivo"' <<< "$metrics"
           # auditoria de segurança roda e devolve nota de 0 a 100
           curl -fsS -b jar -X POST -H 'content-type: application/json' -d '{}' "$B/api/sites/$id/security" | jq -e '.score >= 0 and .score <= 100'
           metrics=$(curl -fsS -H "Authorization: Bearer $METRICS_TOKEN" $B/metrics)
-          grep -q 'uptrue_security_score{site="Uptrue"' <<< "$metrics"
+          grep -q 'uivo_security_score{site="Uivo"' <<< "$metrics"
           # eventos estruturados em JSON no log (prontos para o Loki)
-          logs=$(docker compose logs --no-color uptrue)
+          logs=$(docker compose logs --no-color uivo)
           grep -q '"event":"security.finding"' <<< "$logs"
           # tempo por etapa: a checagem grava DNS/conexão/espera/download e a API devolve percentis
           curl -fsS -b jar "$B/api/sites/$id/timing?range=24h" | jq -e '.samples >= 1 and .p50 != null and .last.timings.wait >= 0'
@@ -99,7 +99,7 @@ jobs:
           curl -fsS -b jar -o relatorio.pdf "$B/api/reports/monthly?month=$month"
           test "$(head -c 5 relatorio.pdf)" = "%PDF-"
           # container sem root
-          test "$(docker compose exec -T uptrue id -u)" != "0"
+          test "$(docker compose exec -T uivo id -u)" != "0"
 
       - name: Logs (em caso de falha)
         if: failure()
@@ -120,7 +120,7 @@ jobs:
         run: |
           set -euo pipefail
           echo token > /tmp/token
-          docker run --rm --entrypoint promtool -v "$PWD/observability/prometheus:/etc/prometheus:ro"             -v /tmp/token:/run/secrets/uptrue_metrics_token:ro prom/prometheus:v3.5.0 check config /etc/prometheus/prometheus.yml
+          docker run --rm --entrypoint promtool -v "$PWD/observability/prometheus:/etc/prometheus:ro"             -v /tmp/token:/run/secrets/uivo_metrics_token:ro prom/prometheus:v3.5.0 check config /etc/prometheus/prometheus.yml
           docker run --rm -v "$PWD/observability/loki:/etc/loki:ro" grafana/loki:3.5.3 -config.file=/etc/loki/loki.yml -verify-config
           docker run --rm -v "$PWD/observability/alloy:/etc/alloy:ro" grafana/alloy:v1.10.0 fmt /etc/alloy/config.alloy > /dev/null
           for f in observability/grafana/dashboards/*.json; do jq -e '.uid and (.panels | length > 0)' "$f" > /dev/null; done
@@ -137,7 +137,7 @@ jobs:
       - name: Simular servidor e testar o update.sh
         run: bash scripts/test-update.sh
       - name: Backup, restore e cópia externa criptografada
-        run: TAG=0.1.7 bash scripts/test-backup-restore.sh
+        run: bash scripts/test-backup-restore.sh
 
   # ─────────────── 3. Publicar imagem multi-arquitetura no GHCR ───────────────
   publish:

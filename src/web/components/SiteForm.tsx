@@ -148,7 +148,7 @@ export function SiteForm({
         <fieldset className="space-y-2">
           <legend className="text-sm text-zinc-300">Cabeçalhos de liberação (opcional)</legend>
           <p className="text-xs text-zinc-500">
-            Para sites atrás de firewall com desafio anti-bot: o Uptrue envia o cabeçalho e o firewall libera
+            Para sites atrás de firewall com desafio anti-bot: o Uivo envia o cabeçalho e o firewall libera
             quem o tiver. Os valores ficam só no servidor e não são exibidos de novo.
           </p>
           {headers.map((h, i) => (
@@ -156,7 +156,7 @@ export function SiteForm({
             <div key={i} className="flex gap-2">
               <input
                 className="input"
-                placeholder="x-uptrue-key"
+                placeholder="x-uivo-key"
                 maxLength={64}
                 value={h.name}
                 onChange={(e) =>

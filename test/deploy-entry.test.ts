@@ -7,7 +7,7 @@ import { describe, it } from 'node:test';
 
 // Pasta temporária com o deploy-entry.sh real e um update.sh falso que só registra o que recebeu
 function setup() {
-  const dir = mkdtempSync(path.join(tmpdir(), 'uptrue-deploy-'));
+  const dir = mkdtempSync(path.join(tmpdir(), 'uivo-deploy-'));
   copyFileSync('scripts/deploy-entry.sh', path.join(dir, 'deploy-entry.sh'));
   writeFileSync(path.join(dir, 'update.sh'), `#!/usr/bin/env bash\necho "$@" > "${dir}/chamado"\n`, {
     mode: 0o755,
@@ -43,7 +43,7 @@ describe('scripts/deploy-entry.sh (comando forçado da chave de deploy)', () => 
 
   for (const attack of [
     'bash',
-    'cat /opt/uptrue/.env',
+    'cat /opt/uivo/.env',
     '0.1.7; rm -rf /',
     '0.1.7 && id',
     '$(id)',

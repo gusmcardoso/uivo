@@ -101,11 +101,7 @@ export function StatusPage() {
 
       <footer className="mt-10 flex items-center justify-center gap-2 text-xs text-zinc-500">
         Monitorado com
-        <a
-          href="https://github.com/gusmcardoso/uptrue"
-          className="opacity-80 hover:opacity-100"
-          rel="noopener"
-        >
+        <a href="https://github.com/gusmcardoso/uivo" className="opacity-80 hover:opacity-100" rel="noopener">
           <span className="scale-75 inline-block origin-left">
             <Logo />
           </span>

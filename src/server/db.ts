@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, renameSync } from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
@@ -99,6 +99,21 @@ CREATE TABLE IF NOT EXISTS notices (
   PRIMARY KEY (site_id, kind, threshold)
 );
 `;
+
+/**
+ * Instalações de antes da troca de nome (Uptrue → Uivo) guardam o banco em uptrue.db.
+ * Renomeia para uivo.db (com o WAL) na primeira subida; o arquivo principal vai por último,
+ * então uma interrupção no meio é retomada na próxima subida sem perder dados.
+ */
+export function adoptLegacyDb(dir: string, file = 'uivo.db', legacy = 'uptrue.db'): boolean {
+  const target = path.join(dir, file);
+  const old = path.join(dir, legacy);
+  if (existsSync(target) || !existsSync(old)) return false;
+  for (const suffix of ['-wal', '-shm', '']) {
+    if (existsSync(old + suffix)) renameSync(old + suffix, target + suffix);
+  }
+  return true;
+}
 
 export function openDb(file: string): DatabaseSync {
   if (file !== ':memory:') mkdirSync(path.dirname(file), { recursive: true });

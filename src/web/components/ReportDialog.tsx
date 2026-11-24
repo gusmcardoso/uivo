@@ -45,7 +45,7 @@ export function ReportDialog({ sites, onClose }: { sites: Site[]; onClose: () =>
       const url = URL.createObjectURL(await res.blob());
       const a = document.createElement('a');
       a.href = url;
-      a.download = `relatorio-uptrue-${month}.pdf`;
+      a.download = `relatorio-uivo-${month}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       onClose();

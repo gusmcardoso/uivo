@@ -16,7 +16,7 @@ function run(cmd: string, envFile: string) {
 }
 
 function tempEnv(content: string): string {
-  const file = path.join(mkdtempSync(path.join(tmpdir(), 'uptrue-obs-')), '.env');
+  const file = path.join(mkdtempSync(path.join(tmpdir(), 'uivo-obs-')), '.env');
   writeFileSync(file, content);
   return file;
 }
@@ -74,7 +74,7 @@ describe('scripts/observability.sh', () => {
   });
 
   it('não executa o conteúdo do .env (lê como texto)', () => {
-    const marker = path.join(tmpdir(), `uptrue-nao-executar-${Date.now()}`);
+    const marker = path.join(tmpdir(), `uivo-nao-executar-${Date.now()}`);
     const file = tempEnv(`AUTH_SECRET=$(touch ${marker})-0123456789abcdef\n`);
     run('check', file);
     assert.throws(() => statSync(marker));

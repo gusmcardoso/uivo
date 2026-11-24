@@ -1,9 +1,9 @@
 {
-  "uid": "uptrue-containers",
-  "title": "Uptrue · Containers",
+  "uid": "uivo-containers",
+  "title": "Uivo · Containers",
   "description": "Consumo de CPU, memória e rede de cada container (cAdvisor).",
   "tags": [
-    "uptrue",
+    "uivo",
     "docker"
   ],
   "timezone": "browser",

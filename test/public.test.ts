@@ -90,12 +90,12 @@ describe('/metrics', () => {
     assert.equal(res.statusCode, 200);
     assert.match(String(res.headers['content-type']), /text\/plain/);
     const text = res.body;
-    assert.match(text, /# TYPE uptrue_site_up gauge/);
-    assert.match(text, /uptrue_site_up\{site="Loja",url="https:\/\/loja.com.br"\} 1/);
-    assert.match(text, /uptrue_site_up\{site="Fora",url="https:\/\/fora.com.br"\} 0/);
-    assert.match(text, /uptrue_site_response_seconds\{site="Loja",[^}]*\} 0.15/);
-    assert.match(text, /uptrue_site_uptime_ratio\{site="Fora",[^}]*window="24h"\} 0.5/);
-    assert.match(text, /uptrue_ssl_expiry_timestamp_seconds\{site="Loja"/);
+    assert.match(text, /# TYPE uivo_site_up gauge/);
+    assert.match(text, /uivo_site_up\{site="Loja",url="https:\/\/loja.com.br"\} 1/);
+    assert.match(text, /uivo_site_up\{site="Fora",url="https:\/\/fora.com.br"\} 0/);
+    assert.match(text, /uivo_site_response_seconds\{site="Loja",[^}]*\} 0.15/);
+    assert.match(text, /uivo_site_uptime_ratio\{site="Fora",[^}]*window="24h"\} 0.5/);
+    assert.match(text, /uivo_ssl_expiry_timestamp_seconds\{site="Loja"/);
   });
 });
 

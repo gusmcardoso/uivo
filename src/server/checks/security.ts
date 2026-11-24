@@ -27,7 +27,7 @@ export function scoreOf(findings: Finding[]): number {
   return Math.max(0, 100 - findings.reduce((sum, f) => sum + PENALTY[f.severity], 0));
 }
 
-const USER_AGENT = 'Uptrue-Audit (+https://github.com/gusmcardoso/uptrue)';
+const USER_AGENT = 'Uivo-Audit (+https://github.com/gusmcardoso/uivo)';
 const MAX_BODY = 256 * 1024;
 
 interface Res {

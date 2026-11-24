@@ -11,12 +11,12 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
-export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-uptrue-obs-test}"
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-uivo-obs-test}"
 export AUTH_SECRET="${AUTH_SECRET:-obs-test-secret-0123456789abcdef}"
 export METRICS_TOKEN="${METRICS_TOKEN:-obs-test-metrics-token-0123456789}"
 export GRAFANA_ADMIN_PASSWORD="${GRAFANA_ADMIN_PASSWORD:-obs-test-grafana-123}"
-export UPTRUE_PORT="${UPTRUE_PORT:-3710}" GRAFANA_PORT="${GRAFANA_PORT:-3711}"
-B="http://127.0.0.1:$UPTRUE_PORT"
+export UIVO_PORT="${UIVO_PORT:-3710}" GRAFANA_PORT="${GRAFANA_PORT:-3711}"
+B="http://127.0.0.1:$UIVO_PORT"
 G="http://127.0.0.1:$GRAFANA_PORT"
 GA="admin:$GRAFANA_ADMIN_PASSWORD"
 JAR="$(mktemp)"
@@ -44,7 +44,7 @@ for _ in $(seq 1 60); do curl -fsS "$B/healthz" >/dev/null 2>&1 && break; sleep 
 curl -fsS -c "$JAR" -H 'content-type: application/json' \
   -d '{"email":"obs@example.com","password":"obs-password-123"}' "$B/api/setup" >/dev/null
 curl -fsS -b "$JAR" -H 'content-type: application/json' \
-  -d '{"name":"Uptrue","url":"http://127.0.0.1:3000/healthz","interval_sec":30,"check_domain":false}' "$B/api/sites" >/dev/null
+  -d '{"name":"Uivo","url":"http://127.0.0.1:3000/healthz","interval_sec":30,"check_domain":false}' "$B/api/sites" >/dev/null
 # Um site HTTPS real exercita os painéis de vencimento de SSL e de domínio
 curl -fsS -b "$JAR" -H 'content-type: application/json' \
   -d '{"name":"GitHub","url":"https://github.com","interval_sec":30}' "$B/api/sites" >/dev/null
@@ -53,13 +53,13 @@ sleep 100
 
 echo "== containers"
 docker compose --profile observability ps --format '{{.Service}}: {{.State}}' | sort
-for s in uptrue prometheus node-exporter cadvisor loki alloy grafana; do
+for s in uivo prometheus node-exporter cadvisor loki alloy grafana; do
   ok "container $s rodando" "$([ "$(docker compose ps "$s" --format '{{.State}}')" = running ] && echo true)"
 done
 
 echo "== Prometheus: alvos"
 targets=$(docker compose exec -T prometheus wget -qO- http://localhost:9090/api/v1/targets)
-for job in uptrue node cadvisor prometheus; do
+for job in uivo node cadvisor prometheus; do
   ok "alvo $job" "$(js "(d.data.activeTargets.find(t => t.labels.job === '$job') || {}).health === 'up'" <<<"$targets")"
 done
 
@@ -70,7 +70,7 @@ ok "cadastro público desligado" "$([ "$(curl -s -o /dev/null -w '%{http_code}' 
 for uid in prometheus loki; do
   ok "fonte de dados $uid" "$(curl -fsS -u "$GA" "$G/api/datasources/uid/$uid/health" | js 'd.status === "OK"')"
 done
-ok "3 dashboards na pasta Uptrue" "$(curl -fsS -u "$GA" "$G/api/search?type=dash-db" | js 'd.filter(x => x.folderTitle === "Uptrue").length === 3')"
+ok "3 dashboards na pasta Uivo" "$(curl -fsS -u "$GA" "$G/api/search?type=dash-db" | js 'd.filter(x => x.folderTitle === "Uivo").length === 3')"
 
 echo "== cada consulta de cada painel"
 queries=$(node -e '
@@ -106,7 +106,7 @@ echo "== Loki"
 since="$(($(date +%s) - 900))000000000"
 loki() { curl -fsS -u "$GA" -G "$G/api/datasources/proxy/uid/loki/loki/api/v1/query_range" --data-urlencode "query=$1" --data-urlencode "start=$since" --data-urlencode limit=5; }
 ok "logs dos containers chegando" "$(loki "{project=\"$COMPOSE_PROJECT_NAME\"}" | js 'd.data.result.length > 0')"
-ok "eventos do Uptrue com rótulo event" "$(loki '{service="uptrue", event="security.finding"}' | js 'd.data.result.length > 0')"
+ok "eventos do Uivo com rótulo event" "$(loki '{service="uivo", event="security.finding"}' | js 'd.data.result.length > 0')"
 
 echo "== exposição"
 ok "Grafana só em 127.0.0.1" "$(docker compose port grafana 3000 | grep -q '^127.0.0.1:' && echo true)"

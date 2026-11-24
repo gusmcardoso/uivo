@@ -25,7 +25,7 @@ async function setup(): Promise<string> {
     payload: { email: 'Admin@Exemplo.com', password: 'senha-forte-123' },
   });
   assert.equal(res.statusCode, 200);
-  const cookie = res.cookies.find((c) => c.name === 'uptrue_session');
+  const cookie = res.cookies.find((c) => c.name === 'uivo_session');
   assert.ok(cookie);
   return `${cookie.name}=${cookie.value}`;
 }

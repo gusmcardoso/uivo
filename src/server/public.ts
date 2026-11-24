@@ -88,44 +88,44 @@ export function renderMetrics(db: DatabaseSync, now = Date.now()): string {
 
   const metrics: { name: string; help: string; type: string; lines: string[] }[] = [
     {
-      name: 'uptrue_site_up',
+      name: 'uivo_site_up',
       help: 'Site no ar (1), fora (0) ou aguardando (-1).',
       type: 'gauge',
       lines: [],
     },
     {
-      name: 'uptrue_site_response_seconds',
+      name: 'uivo_site_response_seconds',
       help: 'Tempo da última resposta HTTP.',
       type: 'gauge',
       lines: [],
     },
     {
-      name: 'uptrue_site_uptime_ratio',
+      name: 'uivo_site_uptime_ratio',
       help: 'Fração de checagens com sucesso na janela.',
       type: 'gauge',
       lines: [],
     },
     {
-      name: 'uptrue_ssl_expiry_timestamp_seconds',
+      name: 'uivo_ssl_expiry_timestamp_seconds',
       help: 'Vencimento do certificado SSL (Unix).',
       type: 'gauge',
       lines: [],
     },
     {
-      name: 'uptrue_domain_expiry_timestamp_seconds',
+      name: 'uivo_domain_expiry_timestamp_seconds',
       help: 'Vencimento do domínio (Unix).',
       type: 'gauge',
       lines: [],
     },
     {
-      name: 'uptrue_security_score',
+      name: 'uivo_security_score',
       help: 'Nota de segurança da última auditoria (0-100).',
       type: 'gauge',
       lines: [],
     },
-    { name: 'uptrue_health_score', help: 'Nota de saúde do site (0-100).', type: 'gauge', lines: [] },
+    { name: 'uivo_health_score', help: 'Nota de saúde do site (0-100).', type: 'gauge', lines: [] },
     {
-      name: 'uptrue_site_content_verified',
+      name: 'uivo_site_content_verified',
       help: 'Conteúdo da página verificado (1) ou barrado por desafio anti-bot (0).',
       type: 'gauge',
       lines: [],
@@ -135,27 +135,27 @@ export function renderMetrics(db: DatabaseSync, now = Date.now()): string {
 
   for (const s of sites) {
     const l = `site="${label(s.name)}",url="${label(s.url)}"`;
-    up.lines.push(`uptrue_site_up{${l}} ${s.status === 'up' ? 1 : s.status === 'down' ? 0 : -1}`);
-    verified.lines.push(`uptrue_site_content_verified{${l}} ${s.last_challenge ? 0 : 1}`);
+    up.lines.push(`uivo_site_up{${l}} ${s.status === 'up' ? 1 : s.status === 'down' ? 0 : -1}`);
+    verified.lines.push(`uivo_site_content_verified{${l}} ${s.last_challenge ? 0 : 1}`);
     const ms = (last.get(s.id) as { response_ms: number } | undefined)?.response_ms;
-    if (ms !== undefined) response.lines.push(`uptrue_site_response_seconds{${l}} ${ms / 1000}`);
+    if (ms !== undefined) response.lines.push(`uivo_site_response_seconds{${l}} ${ms / 1000}`);
     for (const [window, span] of [
       ['24h', DAY],
       ['7d', 7 * DAY],
       ['30d', 30 * DAY],
     ] as const) {
       const r = (ratio.get(s.id, now - span) as { r: number | null }).r;
-      if (r !== null) uptime.lines.push(`uptrue_site_uptime_ratio{${l},window="${window}"} ${r}`);
+      if (r !== null) uptime.lines.push(`uivo_site_uptime_ratio{${l},window="${window}"} ${r}`);
     }
     if (s.ssl_expires_at)
-      ssl.lines.push(`uptrue_ssl_expiry_timestamp_seconds{${l}} ${Math.floor(s.ssl_expires_at / 1000)}`);
-    if (s.security_score !== null) security.lines.push(`uptrue_security_score{${l}} ${s.security_score}`);
+      ssl.lines.push(`uivo_ssl_expiry_timestamp_seconds{${l}} ${Math.floor(s.ssl_expires_at / 1000)}`);
+    if (s.security_score !== null) security.lines.push(`uivo_security_score{${l}} ${s.security_score}`);
     const r7 = (ratio.get(s.id, now - 7 * DAY) as { r: number | null }).r;
     const hs = healthScore(s, r7 === null ? null : r7 * 100, now);
-    if (hs !== null) health.lines.push(`uptrue_health_score{${l}} ${hs}`);
+    if (hs !== null) health.lines.push(`uivo_health_score{${l}} ${hs}`);
     if (s.domain_expires_at) {
       domain.lines.push(
-        `uptrue_domain_expiry_timestamp_seconds{${l}} ${Math.floor(s.domain_expires_at / 1000)}`,
+        `uivo_domain_expiry_timestamp_seconds{${l}} ${Math.floor(s.domain_expires_at / 1000)}`,
       );
     }
   }

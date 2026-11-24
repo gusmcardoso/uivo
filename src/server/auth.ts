@@ -14,7 +14,7 @@ export function verifyPassword(password: string, stored: string): boolean {
   return timingSafeEqual(actual, expected);
 }
 
-export const SESSION_COOKIE = 'uptrue_session';
+export const SESSION_COOKIE = 'uivo_session';
 export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** Valor do cookie (assinado pelo @fastify/cookie): "<userId>.<expiraEm>". */

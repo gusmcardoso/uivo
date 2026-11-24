@@ -4,14 +4,14 @@ global:
   evaluation_interval: 30s
 
 scrape_configs:
-  # Uptrue: /metrics protegido por token; o token chega como secret do compose (nunca versionado)
-  - job_name: uptrue
+  # Uivo: /metrics protegido por token; o token chega como secret do compose (nunca versionado)
+  - job_name: uivo
     scrape_interval: 60s
     authorization:
       type: Bearer
-      credentials_file: /run/secrets/uptrue_metrics_token
+      credentials_file: /run/secrets/uivo_metrics_token
     static_configs:
-      - targets: ["uptrue:3000"]
+      - targets: ["uivo:3000"]
 
   # A máquina: CPU, memória, disco e rede
   - job_name: node
