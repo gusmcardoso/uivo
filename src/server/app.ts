@@ -343,6 +343,55 @@ export async function buildApp(options: AppOptions) {
     },
   );
 
+  // Visão geral da tela inicial: as últimas 24 h de cada site, hora a hora, e o que mudou desde ontem
+  app.get('/api/overview', { preHandler: requireAuth }, async () => {
+    const now = Date.now();
+    const hourStart = Math.floor(now / HOUR) * HOUR;
+    const from = hourStart - 23 * HOUR; // 24 faixas de 1 h, a última é a hora corrente
+    const sites = db.prepare('SELECT id FROM sites ORDER BY name COLLATE NOCASE').all() as { id: number }[];
+    const hourly = db.prepare(
+      `SELECT (at / ${HOUR}) * ${HOUR} AS h, COUNT(*) AS n, SUM(ok) AS up,
+         ROUND(AVG(CASE WHEN ok = 1 THEN response_ms END)) AS ms
+       FROM checks WHERE site_id = ? AND at >= ? GROUP BY 1`,
+    );
+    const window = db.prepare(
+      `SELECT COUNT(*) AS n, ROUND(AVG(CASE WHEN ok = 1 THEN response_ms END)) AS ms
+       FROM checks WHERE site_id = ? AND at >= ? AND at < ?`,
+    );
+    const incidents = db.prepare(`SELECT COUNT(*) AS n FROM incidents WHERE site_id = ? AND started_at >= ?`);
+    let checks = 0;
+    let falls = 0;
+    const perSite = sites.map(({ id }) => {
+      const rows = new Map(
+        (hourly.all(id, from) as { h: number; n: number; up: number; ms: number | null }[]).map((r) => [
+          r.h,
+          r,
+        ]),
+      );
+      const hours = Array.from({ length: 24 }, (_, i) => {
+        const r = rows.get(from + i * HOUR);
+        return r ? { uptime: Math.round((r.up / r.n) * 1000) / 10, ms: r.ms } : null;
+      });
+      const today = window.get(id, now - DAY, now) as { n: number; ms: number | null };
+      const yesterday = window.get(id, now - 2 * DAY, now - DAY) as { n: number; ms: number | null };
+      const fallsToday = (incidents.get(id, now - DAY) as { n: number }).n;
+      checks += today.n;
+      falls += fallsToday;
+      return {
+        id,
+        hours,
+        responseMs: today.ms,
+        // variação da resposta média contra as 24 h anteriores, em % (null sem base de comparação)
+        responseChange:
+          today.ms !== null && yesterday.ms
+            ? Math.round(((today.ms - yesterday.ms) / yesterday.ms) * 100)
+            : null,
+        incidents24h: fallsToday,
+      };
+    });
+    return { from, checks24h: checks, incidents24h: falls, sites: perSite };
+  });
+
   app.get<{ Params: { id: string }; Querystring: { range?: string } }>(
     '/api/sites/:id/checks',
     { preHandler: requireAuth },

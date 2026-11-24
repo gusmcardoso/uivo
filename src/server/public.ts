@@ -138,7 +138,9 @@ export function renderMetrics(db: DatabaseSync, now = Date.now()): string {
     up.lines.push(`uivo_site_up{${l}} ${s.status === 'up' ? 1 : s.status === 'down' ? 0 : -1}`);
     verified.lines.push(`uivo_site_content_verified{${l}} ${s.last_challenge ? 0 : 1}`);
     const ms = (last.get(s.id) as { response_ms: number } | undefined)?.response_ms;
-    if (ms !== undefined) response.lines.push(`uivo_site_response_seconds{${l}} ${ms / 1000}`);
+    // site fora do ar não tem "tempo de resposta": o tempo da falha (ex.: 10 s de espera) distorceria o gráfico
+    if (ms !== undefined && s.status !== 'down')
+      response.lines.push(`uivo_site_response_seconds{${l}} ${ms / 1000}`);
     for (const [window, span] of [
       ['24h', DAY],
       ['7d', 7 * DAY],

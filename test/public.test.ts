@@ -95,6 +95,11 @@ describe('/metrics', () => {
     assert.match(text, /uivo_site_up\{site="Fora",url="https:\/\/fora.com.br"\} 0/);
     assert.match(text, /uivo_site_response_seconds\{site="Loja",[^}]*\} 0.15/);
     assert.match(text, /uivo_site_uptime_ratio\{site="Fora",[^}]*window="24h"\} 0.5/);
+    assert.doesNotMatch(
+      text,
+      /uivo_site_response_seconds\{site="Fora"/,
+      'site fora do ar não exporta tempo de resposta',
+    );
     assert.match(text, /uivo_ssl_expiry_timestamp_seconds\{site="Loja"/);
   });
 });

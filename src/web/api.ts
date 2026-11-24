@@ -87,6 +87,23 @@ export interface Moment {
   incidents: { started_at: number; ended_at: number | null; reason: string | null }[];
 }
 
+export interface OverviewSite {
+  id: number;
+  /** 24 faixas de 1 h (a última é a hora atual); null = sem checagens na hora */
+  hours: ({ uptime: number; ms: number | null } | null)[];
+  responseMs: number | null;
+  /** variação da resposta média contra as 24 h anteriores, em % */
+  responseChange: number | null;
+  incidents24h: number;
+}
+
+export interface Overview {
+  from: number;
+  checks24h: number;
+  incidents24h: number;
+  sites: OverviewSite[];
+}
+
 export interface Incident {
   id: number;
   started_at: number;
@@ -147,6 +164,7 @@ export const api = {
   login: (email: string, password: string) => request('POST', '/api/login', { email, password }),
   logout: () => request('POST', '/api/logout', {}),
   sites: () => request<Site[]>('GET', '/api/sites'),
+  overview: () => request<Overview>('GET', '/api/overview'),
   createSite: (body: SitePayload) => request<Site>('POST', '/api/sites', body),
   updateSite: (id: number, body: Partial<SitePayload>) => request<Site>('PATCH', `/api/sites/${id}`, body),
   deleteSite: (id: number) => request('DELETE', `/api/sites/${id}`),

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { api, type PublicStatus } from '../api.ts';
 import { duration, formatUptime } from '../format.ts';
+import { Footer } from './Footer.tsx';
 import { Logo } from './Logo.tsx';
+import { PixelBackground } from './PixelBackground.tsx';
 
 const REFRESH_MS = 60_000;
 
@@ -41,7 +43,11 @@ export function StatusPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
-      <h1 className="text-2xl font-semibold tracking-tight text-zinc-100">{data?.title ?? 'Status'}</h1>
+      <PixelBackground />
+      <p className="font-mono text-xs text-zinc-500">
+        <span className="text-brand">$</span> uivo status --público<span className="cursor-blink">_</span>
+      </p>
+      <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-100">{data?.title ?? 'Status'}</h1>
       {data && (
         <p className="mt-1 text-sm text-zinc-500">
           Atualizado às{' '}
@@ -53,8 +59,8 @@ export function StatusPage() {
 
       {data && (
         <div
-          className={`mt-6 flex items-center gap-3 rounded-xl border px-5 py-4 ${
-            allUp ? 'border-emerald-500/25 bg-emerald-500/[0.07]' : 'border-red-500/30 bg-red-500/10'
+          className={`mt-6 flex items-center gap-3 rounded-md border px-5 py-4 backdrop-blur-[2px] ${
+            allUp ? 'border-emerald-500/25 bg-emerald-950/40' : 'border-red-500/30 bg-red-950/40'
           }`}
         >
           <span className="relative flex size-2.5">
@@ -116,8 +122,8 @@ export function StatusPage() {
         </section>
       )}
 
-      <footer className="mt-12 flex items-center justify-center gap-2 text-xs text-zinc-500">
-        Monitorado com
+      <div className="mt-12 flex items-center justify-center gap-2 font-mono text-[11px] text-zinc-500">
+        monitorado com
         <a
           href="https://github.com/gusmcardoso/uivo"
           className="opacity-70 transition-opacity hover:opacity-100"
@@ -125,7 +131,8 @@ export function StatusPage() {
         >
           <Logo className="h-5" />
         </a>
-      </footer>
+      </div>
+      <Footer className="mt-4" />
     </main>
   );
 }

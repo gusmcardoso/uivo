@@ -3,7 +3,7 @@ import { beforeEach, describe, it } from 'node:test';
 import { buildApp } from '../src/server/app.ts';
 import { openDb } from '../src/server/db.ts';
 import { buildReport, monthRange } from '../src/server/report/data.ts';
-import { formatDuration, periodLabel, renderReport } from '../src/server/report/pdf.ts';
+import { formatDuration, periodLabel, plainReason, renderReport } from '../src/server/report/pdf.ts';
 
 process.env.TZ = 'America/Sao_Paulo';
 const HOUR = 3_600_000;
@@ -36,6 +36,17 @@ describe('período do relatório', () => {
     assert.equal(new Date(from).toISOString(), '2026-11-01T03:00:00.000Z');
     assert.equal(new Date(to).toISOString(), '2026-12-01T03:00:00.000Z');
     assert.equal(periodLabel(from), 'Novembro de 2026');
+  });
+
+  it('traduz o motivo técnico da queda para quem não é da área', () => {
+    assert.match(plainReason('HTTP 503'), /erro interno \(código 503\)/);
+    assert.match(plainReason('HTTP 404'), /não foi encontrada/);
+    assert.match(plainReason('Tempo de resposta esgotado'), /demorou demais/);
+    assert.match(plainReason('Domínio não encontrado (DNS)'), /não foi encontrado na internet/);
+    assert.match(plainReason('Conexão recusada'), /recusou a conexão/);
+    assert.match(plainReason('Palavra-chave "Loja" não encontrada'), /sem o conteúdo esperado/);
+    assert.equal(plainReason(null), 'o site não respondeu');
+    assert.equal(plainReason('erro raro XYZ'), 'erro raro XYZ');
   });
 
   it('formata durações em português', () => {
@@ -144,7 +155,8 @@ describe('PDF', () => {
     const text = pdf.toString('latin1');
     assert.equal(pdf.subarray(0, 5).toString(), '%PDF-');
     const pages = text.match(/\/Type \/Page\b/g)?.length ?? 0;
-    assert.equal(pages, 3, `páginas: ${pages}`); // capa + 2 sites (o rodapé não pode criar páginas)
+    // capa + 2 páginas por site + glossário (o rodapé não pode criar páginas)
+    assert.equal(pages, 6, `páginas: ${pages}`);
     assert.ok(pdf.length < 200_000, `tamanho: ${pdf.length}`);
   });
 
