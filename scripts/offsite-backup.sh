@@ -23,6 +23,23 @@ log() { echo "$(date '+%F %T') $*"; }
 die() { log "ERRO: $*" >&2; exit 1; }
 
 [ -f "$CONF/rclone.conf" ] || die "configuração não encontrada em $CONF/rclone.conf (veja docs/DEPLOY.md)"
+# Traduz os erros mais comuns do rclone/Object Storage para o que fazer
+explain() {
+  local err=$1
+  case "$err" in
+    *"Tenant not found"*) die "namespace errado no endpoint (é o código da conta, não o nome do bucket): rclone config update oci endpoint=..." ;;
+    *"secret key required"* | *SignatureDoesNotMatch* | *InvalidAccessKeyId*) die "chave de acesso recusada: confira o Access key e o Secret (Customer secret keys) no rclone.conf" ;;
+    *"directory not found"* | *NoSuchBucket*) die "bucket não encontrado: confira o nome do bucket em 'remote =' da seção [offsite] do rclone.conf" ;;
+    *"no such host"* | *"dial tcp"*) die "sem conexão com o Object Storage: confira o endpoint e a internet do servidor" ;;
+    *) die "falha no rclone: $(printf '%s' "$err" | tail -1)" ;;
+  esac
+}
+rc_or_explain() { # roda o rclone; se falhar, explica o erro
+  local out
+  if ! out=$(rc "$@" 2>&1); then explain "$out"; fi
+  printf '%s' "$out"
+}
+
 rc() {
   docker run --rm --user "$(id -u):$(id -g)" -e RCLONE_CONFIG=/config/rclone.conf \
     -v "$CONF:/config" -v "$SRC:/data" "$IMAGE" "$@"
@@ -30,15 +47,15 @@ rc() {
 
 case "${1:-}" in
   --list)
-    rc lsl "$REMOTE" | sort -k2,3
+    rc_or_explain lsl "$REMOTE" | sort -k2,3
     exit 0
     ;;
   --fetch)
     name="${2:-}"
     [[ "$name" =~ ^uptrue-[0-9A-Za-z_-]+\.db\.gz$ ]] || die "informe o nome do backup (veja --list)"
-    rc copy "$REMOTE$name" /data/
+    rc_or_explain copy "$REMOTE$name" /data/ >/dev/null
     gzip -t "$SRC/$name" || die "o arquivo baixado está corrompido"
-    log "baixado: $SRC/$name  (restaure com: ./restore.sh $name)"
+    log "baixado: $SRC/$name  (restaure com: ./restore.sh $SRC/$name)"
     exit 0
     ;;
   "") ;;
@@ -49,7 +66,7 @@ latest=$(ls -1t "$SRC"/uptrue-*.db.gz 2>/dev/null | head -1) || true
 [ -n "${latest:-}" ] || die "nenhum backup local em $SRC para enviar"
 name=$(basename "$latest")
 
-rc copy "/data/$name" "$REMOTE"
+rc_or_explain copy "/data/$name" "$REMOTE" >/dev/null
 # Só conta como enviado se aparecer no destino com o mesmo tamanho
 local_size=$(stat -c %s "$latest")
 remote_size=$(rc lsl "$REMOTE$name" 2>/dev/null | awk '{print $1}')

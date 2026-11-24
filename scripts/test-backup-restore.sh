@@ -39,7 +39,8 @@ curl -fsS -c "$DIR/jar" -H 'content-type: application/json' -d '{"email":"t@exam
 api -d '{"name":"Antigo","url":"http://127.0.0.1:3000/healthz","check_domain":false}' "http://127.0.0.1:$PORT/api/sites" >/dev/null
 
 echo "== backup"
-./backup.sh >/dev/null
+out=$(./backup.sh 2>&1)
+ok "saída do backup limpa (uma linha, sem progresso do docker)" "$([ "$(printf '%s\n' "$out" | wc -l)" = 1 ] && ! printf '%s' "$out" | grep -q Copy && echo true || printf '%s' "$out")"
 first=$(ls -1t "$BACKUP_DIR"/uptrue-*.db.gz | head -1)
 ok "backup criado" "$([ -f "$first" ] && echo true)"
 api -d '{"name":"Novo","url":"http://127.0.0.1:3000/healthz","check_domain":false}' "http://127.0.0.1:$PORT/api/sites" >/dev/null
@@ -92,6 +93,9 @@ out=$(./offsite-backup.sh --fetch "$name" 2>&1); code=$?
 ok "--fetch traz de volta" "$([ $code = 0 ] && [ -f "$latest" ] && echo true || echo "$out" | tail -2)"
 ok "arquivo recuperado idêntico ao original (sha256)" "$([ -f "$latest" ] && [ "$(sha256sum "$latest" | cut -d' ' -f1)" = "$sum" ] && echo true)"
 out=$(./offsite-backup.sh --fetch '../../etc/passwd' 2>&1); code=$?
+ok "--fetch mostra o caminho completo para o restore" "$(BACKUP_DIR=$BACKUP_DIR ./offsite-backup.sh --fetch "$name" 2>&1 | grep -q "restore.sh $BACKUP_DIR/$name" && echo true)"
+out=$(OFFSITE_REMOTE=nuvem:/config/nao-existe/ ./offsite-backup.sh --list 2>&1); code=$?
+ok "destino inexistente explicado em português" "$([ $code != 0 ] && echo "$out" | grep -q 'bucket não encontrado' && echo true || echo "$out" | tail -1)"
 ok "--fetch recusa nome fora do padrão" "$([ $code != 0 ] && echo true)"
 
 echo

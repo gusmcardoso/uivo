@@ -196,6 +196,7 @@ npm run lint && npm run typecheck
 - [x] **v0.1.1**: página de status pública e `/metrics` para Prometheus/Grafana
 - [x] **v0.1.2**: auditoria de segurança, detecção de adulteração, nota de saúde e eventos para o Loki
 - [x] **v0.1.3**: tempo por etapa (DNS, conexão, TLS, servidor, download), percentis e diagnóstico
+- [x] **v0.1.9**: log do backup limpo, erros do backup externo em português e caminho completo no `--fetch`
 - [x] **v0.1.8**: `restore.sh` testado e cópia externa criptografada dos backups (rclone crypt), ambos simulados no CI
 - [x] **v0.1.7**: `update.sh` com backup e rollback automático, `backup.sh` testado, deploy automático por tag com chave restrita (comando forçado) e guia de deploy
 - [x] **v0.1.6**: `scripts/observability.sh` (check, init, up, status, down, logs) com testes e ShellCheck no CI

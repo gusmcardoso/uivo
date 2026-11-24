@@ -23,7 +23,9 @@ image=$(docker inspect -f '{{.Config.Image}}' "$container")
 docker compose exec -T uptrue node -e "
   const { DatabaseSync } = require('node:sqlite');
   new DatabaseSync('/data/uptrue.db').exec(\"VACUUM INTO '/data/backup-tmp.db'\");"
-docker compose cp -q uptrue:/data/backup-tmp.db "$DEST/$FILE" 2>/dev/null || docker compose cp uptrue:/data/backup-tmp.db "$DEST/$FILE" >/dev/null
+# sem mensagens de progresso no log (uma falha na cópia é pega pela verificação de integridade abaixo)
+docker compose cp uptrue:/data/backup-tmp.db "$DEST/$FILE" >/dev/null 2>&1 ||
+  { echo "backup: falha ao copiar o banco do container" >&2; exit 1; }
 docker compose exec -T uptrue rm -f /data/backup-tmp.db
 
 # Só vale como backup se abrir e tiver a estrutura esperada
