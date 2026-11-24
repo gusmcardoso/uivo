@@ -13,6 +13,7 @@ import {
 } from './components/Icons.tsx';
 import { Login } from './components/Login.tsx';
 import { Logo } from './components/Logo.tsx';
+import { Bell, Toasts, useNotifications } from './components/Notifications.tsx';
 import { PixelBackground } from './components/PixelBackground.tsx';
 import { ReportDialog } from './components/ReportDialog.tsx';
 import { scoreTone } from './components/SecurityPanel.tsx';
@@ -20,8 +21,25 @@ import { SiteDetail } from './components/SiteDetail.tsx';
 import { SiteForm } from './components/SiteForm.tsx';
 import { StatusPage } from './components/StatusPage.tsx';
 import { daysUntil, expiryTone, formatUptime, hostOf, relativeTime } from './format.ts';
+import { clientsOf, groupByClient, type SortMode, sortSites } from './sort.ts';
 
 type Session = 'loading' | 'setup' | 'login' | 'in';
+
+/** Preferências da lista guardadas no navegador (só conveniência: sem elas, vale o padrão). */
+const pref = (key: string) => {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+const savePref = (key: string, value: string) => {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // modo privado ou armazenamento bloqueado: segue sem lembrar
+  }
+};
 
 const routeSiteId = () => {
   const m = /^\/sites\/(\d+)\/?$/.exec(window.location.pathname);
@@ -73,6 +91,11 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   // endereço próprio por site: /sites/:id (o voltar do navegador e o F5 funcionam)
   const [siteId, setSiteId] = useState<number | null>(routeSiteId);
   const [checking, setChecking] = useState<number | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>(() =>
+    pref('uivo.ordem') === 'nome' ? 'nome' : 'situacao',
+  );
+  const [grouped, setGrouped] = useState(() => pref('uivo.agrupar') === '1');
+  const notes = useNotifications(onLogout);
 
   const load = useCallback(async () => {
     try {
@@ -126,6 +149,14 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   const list = sites ?? [];
   const bySite = new Map((overview?.sites ?? []).map((o) => [o.id, o]));
   const current = siteId === null ? null : (list.find((s) => s.id === siteId) ?? null);
+  const ordered = sortSites(list, sortMode);
+  const groups = grouped ? groupByClient(list, sortMode) : null;
+  // um aviso novo (queda, volta…) atualiza a lista na hora, sem esperar os 30 s
+  const lastToast = notes.toasts[notes.toasts.length - 1]?.id;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: recarrega quando chega aviso novo
+  useEffect(() => {
+    if (lastToast) void load();
+  }, [lastToast]);
 
   useEffect(() => {
     document.title = current ? `${current.name} · Uivo` : 'Uivo';
@@ -165,6 +196,12 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
               <IconGlobe />
               <span className="hidden sm:inline">Status</span>
             </a>
+            <Bell
+              items={notes.items}
+              unread={notes.unread}
+              onOpenSite={navigate}
+              onMarkAllRead={notes.markAllRead}
+            />
             <button type="button" className="btn-ghost" onClick={logout} title="Sair">
               <IconLogout />
               <span className="hidden sm:inline">Sair</span>
@@ -219,11 +256,44 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
         {siteId === null && list.length > 0 && (
           <section className="card mt-4 overflow-hidden">
-            <div className="flex items-center justify-between border-b border-zinc-800/80 px-4 py-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/80 px-4 py-2.5">
               <span className="panel-title">
                 Sites <span className="text-zinc-600">{list.length}</span>
               </span>
-              <span className="label-xs hidden md:inline">cada quadradinho é uma hora</span>
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-sm border border-zinc-800 p-0.5" title="Ordem da lista">
+                  {(
+                    [
+                      ['situacao', 'Situação'],
+                      ['nome', 'Nome'],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-pressed={sortMode === key}
+                      onClick={() => {
+                        setSortMode(key);
+                        savePref('uivo.ordem', key);
+                      }}
+                      className={`rounded-[2px] px-2.5 py-1 text-xs ${sortMode === key ? 'bg-brand/15 text-brand' : 'text-zinc-500 hover:text-zinc-200'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  aria-pressed={grouped}
+                  onClick={() => {
+                    setGrouped(!grouped);
+                    savePref('uivo.agrupar', grouped ? '0' : '1');
+                  }}
+                  className={`rounded-sm border px-2.5 py-1 text-xs transition-colors ${grouped ? 'border-brand/50 bg-brand/10 text-brand' : 'border-zinc-800 text-zinc-500 hover:text-zinc-200'}`}
+                >
+                  Agrupar por cliente
+                </button>
+              </div>
             </div>
             <div className="hidden grid-cols-[minmax(0,1fr)_10rem_4.5rem_6rem_3.5rem_4rem_4rem_6.5rem] items-center gap-4 border-b border-zinc-800/60 px-4 py-2 md:grid">
               <span className="label-xs">Site</span>
@@ -237,22 +307,55 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
               <span className="label-xs">Domínio</span>
               <span />
             </div>
-            <ul className="divide-y divide-zinc-800/60">
-              {list.map((site) => (
-                <li key={site.id}>
-                  <SiteRow
-                    site={site}
-                    ov={bySite.get(site.id)}
-                    from={overview?.from}
-                    checking={checking === site.id}
-                    onOpen={() => navigate(site.id)}
-                    onCheck={() => checkNow(site)}
-                    onEdit={() => setEditing(site)}
-                    onRemove={() => remove(site)}
-                  />
-                </li>
-              ))}
-            </ul>
+            {groups ? (
+              groups.map((g) => (
+                <div key={g.client ?? '\u0000'}>
+                  <div className="flex items-center gap-3 border-b border-zinc-800/60 bg-zinc-900/40 px-4 py-2">
+                    <span className="text-sm font-medium text-zinc-200">{g.client ?? 'Sem cliente'}</span>
+                    <span className="text-xs text-zinc-600">
+                      {g.sites.length} site{g.sites.length === 1 ? '' : 's'}
+                    </span>
+                    {g.down > 0 && <span className="text-xs text-red-400">{g.down} fora do ar</span>}
+                    {g.attention > 0 && (
+                      <span className="text-xs text-amber-400">{g.attention} pedindo atenção</span>
+                    )}
+                  </div>
+                  <ul className="divide-y divide-zinc-800/60 border-b border-zinc-800/60 last:border-b-0">
+                    {g.sites.map((site) => (
+                      <li key={site.id}>
+                        <SiteRow
+                          site={site}
+                          ov={bySite.get(site.id)}
+                          from={overview?.from}
+                          checking={checking === site.id}
+                          onOpen={() => navigate(site.id)}
+                          onCheck={() => checkNow(site)}
+                          onEdit={() => setEditing(site)}
+                          onRemove={() => remove(site)}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))
+            ) : (
+              <ul className="divide-y divide-zinc-800/60">
+                {ordered.map((site) => (
+                  <li key={site.id}>
+                    <SiteRow
+                      site={site}
+                      ov={bySite.get(site.id)}
+                      from={overview?.from}
+                      checking={checking === site.id}
+                      onOpen={() => navigate(site.id)}
+                      onCheck={() => checkNow(site)}
+                      onEdit={() => setEditing(site)}
+                      onRemove={() => remove(site)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
         )}
       </main>
@@ -260,9 +363,11 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
       <Footer className="border-t border-zinc-800/60 bg-zinc-950/60 px-4 py-5 backdrop-blur-sm" />
 
       {reporting && sites && <ReportDialog sites={sites} onClose={() => setReporting(false)} />}
+      <Toasts toasts={notes.toasts} onDismiss={notes.dismiss} onOpen={navigate} />
       {editing && (
         <SiteForm
           site={editing === 'new' ? undefined : editing}
+          clients={clientsOf(list)}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);

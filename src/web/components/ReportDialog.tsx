@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import type { Site } from '../api.ts';
+import { clientsOf } from '../sort.ts';
 
 /** Últimos 12 meses no formato AAAA-MM, do mais recente ao mais antigo. */
 function lastMonths(): { value: string; label: string }[] {
@@ -99,6 +100,36 @@ export function ReportDialog({ sites, onClose }: { sites: Site[]; onClose: () =>
         </label>
         <fieldset className="space-y-1.5">
           <legend className="label-xs mb-1">Sites</legend>
+          {clientsOf(sites).length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                className="rounded-sm border border-zinc-800 px-2 py-0.5 text-xs text-zinc-400 hover:text-zinc-100"
+                onClick={() => setSelected(sites.map((s) => s.id))}
+              >
+                Todos
+              </button>
+              {clientsOf(sites).map((c) => {
+                const ids = sites.filter((s) => s.client?.trim() === c).map((s) => s.id);
+                const active = ids.length === selected.length && ids.every((id) => selected.includes(id));
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    aria-pressed={active}
+                    className={`rounded-sm border px-2 py-0.5 text-xs ${active ? 'border-brand/50 bg-brand/10 text-brand' : 'border-zinc-800 text-zinc-400 hover:text-zinc-100'}`}
+                    onClick={() => {
+                      setSelected(ids);
+                      // relatório de um cliente só: o nome dele vira o título (se ainda não houver um)
+                      setTitle((t) => (t.trim() && !t.startsWith('Relatório — ') ? t : `Relatório — ${c}`));
+                    }}
+                  >
+                    {c}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <div className="max-h-48 space-y-1 overflow-y-auto">
             {sites.map((s) => (
               <label key={s.id} className="flex items-center gap-2 text-sm text-zinc-300">

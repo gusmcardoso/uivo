@@ -6,6 +6,7 @@ import { checkDomain } from './checks/domain.ts';
 import { checkHttp, type HttpResult } from './checks/http.ts';
 import { checkSsl } from './checks/ssl.ts';
 import { getSite, type Site, siteHeaders } from './db.ts';
+import { addNotification } from './notifications.ts';
 import { DAY, escapeHtml as esc, formatDuration, HOUR } from './util.ts';
 
 /** Falhas seguidas necessárias para declarar o site fora do ar (evita alarme falso). */
@@ -82,6 +83,14 @@ export async function runSiteCheck(site: Site, deps: MonitorDeps): Promise<HttpR
     db.prepare('UPDATE sites SET last_challenge = ? WHERE id = ?').run(challenge, site.id);
     if (challenge) {
       deps.event?.('check.challenged', { site: site.name, url: site.url, provider: challenge });
+      addNotification(db, {
+        siteId: site.id,
+        kind: 'challenge',
+        level: 'warn',
+        title: `${site.name}: o firewall (${challenge}) está barrando o monitor`,
+        detail: 'O site respondeu, mas o conteúdo não pode ser verificado.',
+        at: now,
+      });
       await notify(
         [
           `🛡️ <b>${esc(site.name)}</b>: o firewall (${esc(challenge)}) está barrando o monitor`,
@@ -108,6 +117,14 @@ export async function runSiteCheck(site: Site, deps: MonitorDeps): Promise<HttpR
         duration_ms: incident ? now - incident.started_at : null,
       });
       const duration = incident ? `\nFicou fora por ${formatDuration(now - incident.started_at)}` : '';
+      addNotification(db, {
+        siteId: site.id,
+        kind: 'up',
+        level: 'good',
+        title: `${site.name} voltou ao ar`,
+        detail: incident ? `Ficou fora por ${formatDuration(now - incident.started_at)}.` : null,
+        at: now,
+      });
       await notify(`✅ <b>${esc(site.name)}</b> voltou ao ar\n${esc(site.url)}${duration}`);
     }
     db.prepare(
@@ -118,6 +135,17 @@ export async function runSiteCheck(site: Site, deps: MonitorDeps): Promise<HttpR
 
   const streak = site.fail_streak + 1;
   let status = site.status;
+  // primeira falha de um site no ar: ainda não é queda (pede confirmação), mas já é instabilidade
+  if (streak === 1 && site.status !== 'down' && CONFIRM_FAILURES > 1) {
+    addNotification(db, {
+      siteId: site.id,
+      kind: 'unstable',
+      level: 'warn',
+      title: `${site.name} está instável`,
+      detail: `A última checagem falhou (${result.error ?? 'sem resposta'}). Confirmando na próxima.`,
+      at: now,
+    });
+  }
   if (streak >= CONFIRM_FAILURES && site.status !== 'down') {
     status = 'down';
     db.prepare('INSERT INTO incidents (site_id, started_at, reason) VALUES (?, ?, ?)').run(
@@ -126,6 +154,14 @@ export async function runSiteCheck(site: Site, deps: MonitorDeps): Promise<HttpR
       result.error,
     );
     deps.event?.('incident.opened', { site: site.name, url: site.url, reason: result.error });
+    addNotification(db, {
+      siteId: site.id,
+      kind: 'down',
+      level: 'bad',
+      title: `${site.name} está fora do ar`,
+      detail: result.error ?? 'sem resposta',
+      at: now,
+    });
     await notify(
       `🔴 <b>${esc(site.name)}</b> está fora do ar\n${esc(site.url)}\nMotivo: ${esc(result.error ?? 'desconhecido')}`,
     );
@@ -180,6 +216,14 @@ async function warnExpiry(
   if (!inserted.changes) return;
   const what = kind === 'ssl' ? 'Certificado SSL' : 'Domínio';
   const when = days < 0 ? 'venceu' : days === 0 ? 'vence hoje' : `vence em ${days} dia(s)`;
+  addNotification(deps.db, {
+    siteId: site.id,
+    kind: 'expiry',
+    level: days <= 3 ? 'bad' : 'warn',
+    title: `${what} de ${site.name} ${when}`,
+    detail: null,
+    at: now,
+  });
   await deps.notify(`⚠️ ${what} de <b>${esc(site.name)}</b> ${when}\n${esc(site.url)}`);
 }
 

@@ -11,10 +11,13 @@ const INTERVALS = [
 
 export function SiteForm({
   site,
+  clients = [],
   onClose,
   onSaved,
 }: {
   site?: Site;
+  /** clientes já usados, para sugerir */
+  clients?: string[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -26,6 +29,7 @@ export function SiteForm({
     enabled: site ? Boolean(site.enabled) : true,
     check_domain: site ? Boolean(site.check_domain) : true,
     public: site ? Boolean(site.public) : false,
+    client: site?.client ?? '',
   });
   // Cabeçalhos de liberação: os valores salvos nunca voltam do servidor (só os nomes);
   // valor em branco num nome já salvo mantém o segredo.
@@ -52,6 +56,7 @@ export function SiteForm({
       name: form.name.trim(),
       url: form.url.trim(),
       keyword: form.keyword?.trim() || null,
+      client: form.client?.trim() || null,
       headers: Object.fromEntries(headers.filter((h) => h.name.trim()).map((h) => [h.name.trim(), h.value])),
     };
     try {
@@ -86,6 +91,22 @@ export function SiteForm({
             onChange={(e) => set('name', e.target.value)}
             placeholder="Loja do cliente"
           />
+        </label>
+        <label className="block space-y-1.5 text-sm">
+          <span className="label-xs">Cliente (opcional)</span>
+          <input
+            className="input"
+            maxLength={60}
+            list="uivo-clientes"
+            value={form.client ?? ''}
+            onChange={(e) => set('client', e.target.value)}
+            placeholder="Para agrupar os sites de um mesmo cliente"
+          />
+          <datalist id="uivo-clientes">
+            {clients.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
         </label>
         <label className="block space-y-1.5 text-sm">
           <span className="label-xs">Endereço</span>

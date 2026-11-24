@@ -32,6 +32,7 @@ export interface Site {
   domain_error: string | null;
   domain_checked_at: number | null;
   created_at: number;
+  client: string | null;
 }
 
 const SCHEMA = `
@@ -91,6 +92,16 @@ CREATE TABLE IF NOT EXISTS audits (
   error TEXT
 );
 CREATE INDEX IF NOT EXISTS audits_site_at ON audits (site_id, at);
+CREATE TABLE IF NOT EXISTS notifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  site_id INTEGER REFERENCES sites(id) ON DELETE CASCADE,
+  at INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  level TEXT NOT NULL,
+  title TEXT NOT NULL,
+  detail TEXT
+);
+CREATE INDEX IF NOT EXISTS notifications_at ON notifications (at);
 CREATE TABLE IF NOT EXISTS notices (
   site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
   kind TEXT NOT NULL,
@@ -143,6 +154,13 @@ function migrate(db: DatabaseSync): void {
   if (!columns.has('last_challenge')) db.exec('ALTER TABLE sites ADD COLUMN last_challenge TEXT');
   if (!columns.has('custom_headers')) db.exec('ALTER TABLE sites ADD COLUMN custom_headers TEXT');
   if (!columns.has('security_error')) db.exec('ALTER TABLE sites ADD COLUMN security_error TEXT');
+  // cliente: agrupa os sites na lista (e no relatório)
+  if (!columns.has('client')) db.exec('ALTER TABLE sites ADD COLUMN client TEXT');
+  const userColumns = new Set(
+    (db.prepare('PRAGMA table_info(users)').all() as { name: string }[]).map((c) => c.name),
+  );
+  if (!userColumns.has('notifications_read_id'))
+    db.exec('ALTER TABLE users ADD COLUMN notifications_read_id INTEGER NOT NULL DEFAULT 0');
 
   // v0.4: tempo de cada etapa por checagem (nulo nas checagens antigas)
   const checkColumns = new Set(

@@ -100,7 +100,9 @@ export function renderBadge(b: BadgeInput): string {
       ? 'fora do ar'
       : b.uptime === null
         ? 'sem dados'
-        : `${b.uptime.toFixed(2).replace('.', ',')}%`;
+        : b.uptime >= 100
+          ? '100%'
+          : `${b.uptime.toFixed(2).replace('.', ',')}%`;
   const value = text(medium, valueText, size, x, base);
   const W = Math.ceil(x + value.width + 10);
   const valueColor = b.status === 'down' ? DOT.down : t.value;

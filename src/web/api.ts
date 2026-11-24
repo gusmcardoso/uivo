@@ -14,6 +14,8 @@ export interface Site {
   /** Provedor do desafio anti-bot da última checagem (conteúdo não verificado). */
   last_challenge: string | null;
   custom_header_names: string[];
+  /** cliente (agrupa os sites na lista) */
+  client: string | null;
   health_score: number | null;
   status: Status;
   last_checked_at: number | null;
@@ -37,6 +39,7 @@ export interface SitePayload {
   enabled: boolean;
   check_domain: boolean;
   public: boolean;
+  client?: string | null;
   /** Valor vazio mantém o segredo já salvo. */
   headers?: Record<string, string>;
 }
@@ -104,6 +107,17 @@ export interface Overview {
   sites: OverviewSite[];
 }
 
+export interface AppNotification {
+  id: number;
+  site_id: number | null;
+  site_name: string | null;
+  at: number;
+  kind: 'down' | 'up' | 'unstable' | 'challenge' | 'expiry';
+  level: 'bad' | 'warn' | 'good' | 'info';
+  title: string;
+  detail: string | null;
+}
+
 export interface Incident {
   id: number;
   started_at: number;
@@ -165,6 +179,13 @@ export const api = {
   logout: () => request('POST', '/api/logout', {}),
   sites: () => request<Site[]>('GET', '/api/sites'),
   overview: () => request<Overview>('GET', '/api/overview'),
+  notifications: (after?: number) =>
+    request<{ items: AppNotification[]; unread: number; lastId: number }>(
+      'GET',
+      `/api/notifications${after === undefined ? '' : `?after=${after}`}`,
+    ),
+  markNotificationsRead: (upTo?: number) =>
+    request<{ unread: number }>('POST', '/api/notifications/read', upTo === undefined ? {} : { upTo }),
   createSite: (body: SitePayload) => request<Site>('POST', '/api/sites', body),
   updateSite: (id: number, body: Partial<SitePayload>) => request<Site>('PATCH', `/api/sites/${id}`, body),
   deleteSite: (id: number) => request('DELETE', `/api/sites/${id}`),

@@ -16,6 +16,7 @@ import {
 } from './auth.ts';
 import { getSite, type Site, siteHeaders } from './db.ts';
 import { healthScore } from './health.ts';
+import { listNotifications, markRead, unreadCount } from './notifications.ts';
 import { registerPublicRoutes } from './public.ts';
 import { buildReport } from './report/data.ts';
 import { renderReport } from './report/pdf.ts';
@@ -55,6 +56,8 @@ const siteBody = {
     enabled: { type: 'boolean' },
     check_domain: { type: 'boolean' },
     public: { type: 'boolean' },
+    // Cliente (agrupa os sites na lista); vazio tira do grupo
+    client: { type: ['string', 'null'], maxLength: 60 },
     // Cabeçalhos de liberação (ex.: segredo do firewall). Valor vazio mantém o já salvo.
     headers: {
       type: 'object',
@@ -83,8 +86,15 @@ interface SiteInput {
   enabled?: boolean;
   check_domain?: boolean;
   public?: boolean;
+  client?: string | null;
   headers?: Record<string, string>;
 }
+
+/** Nome do cliente sem espaços sobrando; vazio vira "sem cliente". */
+const cleanClient = (v: string | null | undefined) => {
+  const t = (v ?? '').replace(/\s+/g, ' ').trim();
+  return t ? t : null;
+};
 
 export async function buildApp(options: AppOptions) {
   const { db } = options;
@@ -194,6 +204,41 @@ export async function buildApp(options: AppOptions) {
     }));
   });
 
+  // ─── Avisos do painel (popup e central do sino) ──────────────────────────────
+  app.get<{ Querystring: { after?: string; limit?: string } }>(
+    '/api/notifications',
+    { preHandler: requireAuth },
+    async (req) => {
+      const after = req.query.after === undefined ? undefined : Number(req.query.after);
+      const items = listNotifications(db, {
+        after: after !== undefined && Number.isInteger(after) && after >= 0 ? after : undefined,
+        limit: Number(req.query.limit) || undefined,
+      });
+      const last = (
+        db.prepare('SELECT COALESCE(MAX(id), 0) AS id FROM notifications').get() as { id: number }
+      ).id;
+      return { items, unread: unreadCount(db, req.userId as number), lastId: last };
+    },
+  );
+
+  app.post<{ Body: { upTo?: number } }>(
+    '/api/notifications/read',
+    {
+      preHandler: requireAuth,
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          properties: { upTo: { type: 'integer', minimum: 0 } },
+        },
+      },
+    },
+    async (req) => {
+      markRead(db, req.userId as number, req.body?.upTo);
+      return { unread: unreadCount(db, req.userId as number) };
+    },
+  );
+
   // ─── Relatório mensal (PDF) ───────────────────────────────────────────────
   app.get<{ Querystring: { month?: string; sites?: string; title?: string } }>(
     '/api/reports/monthly',
@@ -271,8 +316,8 @@ export async function buildApp(options: AppOptions) {
       if (typeof headers === 'string') return reply.code(400).send({ error: headers });
       const result = db
         .prepare(
-          `INSERT INTO sites (name, url, interval_sec, keyword, enabled, check_domain, public, custom_headers, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO sites (name, url, interval_sec, keyword, enabled, check_domain, public, custom_headers, client, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           b.name ?? '',
@@ -283,6 +328,7 @@ export async function buildApp(options: AppOptions) {
           b.check_domain === false ? 0 : 1,
           b.public ? 1 : 0,
           Object.keys(headers).length ? JSON.stringify(headers) : null,
+          cleanClient(b.client),
           Date.now(),
         );
       const id = Number(result.lastInsertRowid);
@@ -304,7 +350,7 @@ export async function buildApp(options: AppOptions) {
       if (typeof headers === 'string') return reply.code(400).send({ error: headers });
       db.prepare(
         `UPDATE sites SET name = ?, url = ?, interval_sec = ?, keyword = ?, enabled = ?, check_domain = ?, public = ?,
-           custom_headers = ?
+           custom_headers = ?, client = ?
          ${urlChanged ? ', ssl_checked_at = NULL, domain_checked_at = NULL' : ''} WHERE id = ?`,
       ).run(
         b.name ?? site.name,
@@ -315,6 +361,7 @@ export async function buildApp(options: AppOptions) {
         b.check_domain === undefined ? site.check_domain : Number(b.check_domain),
         b.public === undefined ? site.public : Number(b.public),
         Object.keys(headers).length ? JSON.stringify(headers) : null,
+        b.client === undefined ? site.client : cleanClient(b.client),
         site.id,
       );
       if (urlChanged) void options.runNow(site.id);
