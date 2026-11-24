@@ -44,7 +44,7 @@ export interface HttpOptions {
   headers?: Record<string, string>;
 }
 
-const USER_AGENT = 'Uivo/0.1 (+https://github.com/gusmcardoso/uivo)';
+const USER_AGENT = 'Uivo/0.2 (+https://github.com/gusmcardoso/uivo)';
 const MAX_REDIRECTS = 5;
 /** Download máximo medido; acima disso a transferência é interrompida (protege o monitor). */
 const MAX_BYTES = 5 * 1024 * 1024;
