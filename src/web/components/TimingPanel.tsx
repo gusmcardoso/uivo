@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import uPlot from 'uplot';
 import type { CheckPoint, Phase, PhaseTimes, TimingSummary } from '../api.ts';
+import type { Hover } from './MomentTooltip.tsx';
 
 export const PHASES: { key: Phase; label: string; color: string; tip: string }[] = [
   {
@@ -44,8 +45,16 @@ export const PHASES: { key: Phase; label: string; color: string; tip: string }[]
 const axisStyle = { stroke: '#71717a', grid: { stroke: '#27272a' }, ticks: { stroke: '#27272a' } };
 
 /** Gráfico em camadas: cada faixa é uma etapa, empilhadas até o tempo total. */
-export function PhaseChart({ points }: { points: CheckPoint[] }) {
+export function PhaseChart({
+  points,
+  onHover,
+}: {
+  points: CheckPoint[];
+  onHover?: (h: Hover | null) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
+  const onHoverRef = useRef(onHover);
+  onHoverRef.current = onHover;
 
   useEffect(() => {
     const el = ref.current;
@@ -64,7 +73,24 @@ export function PhaseChart({ points }: { points: CheckPoint[] }) {
         height: 240,
         cursor: { y: false },
         legend: { show: false },
-        scales: { x: { time: true }, y: { range: (_u, _min, max) => [0, Math.max(100, max * 1.15)] } },
+        hooks: {
+          // posição do cursor para o detalhe do ponto (null quando o mouse sai do gráfico)
+          setCursor: [
+            (u) => {
+              const idx = u.cursor.idx;
+              const left = u.cursor.left ?? -1;
+              if (idx == null || left < 0) return onHoverRef.current?.(null);
+              const over = u.over.getBoundingClientRect();
+              const box = el.getBoundingClientRect();
+              onHoverRef.current?.({ idx, x: over.left - box.left + left, width: box.width });
+            },
+          ],
+        },
+        scales: {
+          x: { time: true },
+          y: { range: (_u, _min, max) => [0, Math.max(100, max * 1.15)] },
+          fail: { range: [0, 1] },
+        },
         axes: [
           {
             ...axisStyle,
@@ -88,9 +114,16 @@ export function PhaseChart({ points }: { points: CheckPoint[] }) {
             fill: ph.color,
             points: { show: false },
           })).reverse(),
+          // falhas: pontos vermelhos numa escala própria (o tempo de uma falha distorceria o eixo)
+          {
+            label: 'Falha',
+            scale: 'fail',
+            stroke: 'transparent',
+            points: { show: true, size: 8, fill: '#f87171', stroke: '#f87171' },
+          },
         ],
       },
-      [xs, ...[...cumulative].reverse()],
+      [xs, ...[...cumulative].reverse(), points.map((p) => (p.ok ? null : 0.93))],
       el,
     );
     const resize = new ResizeObserver(() => plot.setSize({ width: el.clientWidth, height: 240 }));
@@ -197,8 +230,8 @@ export function LastCheck({ timing }: { timing: TimingSummary }) {
       )}
 
       {tip && (
-        <p className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3.5 text-sm text-zinc-300">
-          <span className="font-medium text-emerald-300">
+        <p className="rounded-xl border border-brand/20 bg-brand/5 p-3.5 text-sm text-zinc-300">
+          <span className="font-medium text-brand">
             {tip.label} responde por {Math.round(tip.share * 100)}% do tempo.
           </span>{' '}
           {tip.tip}
@@ -212,7 +245,7 @@ function Detail({ label, value, warn }: { label: string; value: string; warn?: b
   return (
     <div>
       <dt className="text-xs text-zinc-500">{label}</dt>
-      <dd className={`font-medium ${warn ? 'text-amber-400' : ''}`}>{value}</dd>
+      <dd className={`font-medium ${warn ? 'text-orange-400' : ''}`}>{value}</dd>
     </div>
   );
 }

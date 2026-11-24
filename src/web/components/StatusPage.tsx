@@ -8,7 +8,7 @@ const REFRESH_MS = 60_000;
 function barColor(value: number | null): string {
   if (value === null) return 'bg-zinc-800';
   if (value >= 99.5) return 'bg-emerald-500';
-  if (value >= 95) return 'bg-amber-400';
+  if (value >= 95) return 'bg-orange-400';
   return 'bg-red-500';
 }
 
