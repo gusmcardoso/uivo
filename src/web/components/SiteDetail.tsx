@@ -155,7 +155,7 @@ function Performance({ site }: { site: Site }) {
             confirmados. Só a página (e a palavra-chave) não pode ser lida. Para a verificação completa,
             cadastre um cabeçalho de liberação em{' '}
             <span className="text-zinc-100">Editar → Cabeçalhos de liberação</span> e crie no firewall uma
-            regra que libere esse cabeçalho, ou libere o IP do servidor do Uptrue.
+            regra que libere esse cabeçalho, ou libere o IP do servidor do Uivo.
           </p>
         </div>
       )}

@@ -2,7 +2,7 @@
 # Porta de entrada do deploy automático (comando forçado da chave SSH do CI).
 #
 # No servidor, a chave de deploy fica no ~/.ssh/authorized_keys assim:
-#   command="/opt/uptrue/deploy-entry.sh",restrict ssh-ed25519 AAAA... deploy-uptrue
+#   command="/opt/uivo/deploy-entry.sh",restrict ssh-ed25519 AAAA... deploy-uivo
 #
 # "restrict" desliga terminal, túneis e encaminhamentos; "command=" faz com que essa chave
 # SÓ execute este script, seja qual for o comando pedido. O comando pedido chega em

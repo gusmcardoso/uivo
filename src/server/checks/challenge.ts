@@ -1,7 +1,7 @@
 /**
  * Reconhece páginas de desafio anti-bot (firewalls de aplicação e CDNs).
  *
- * O Uptrue não tenta resolver nem contornar esses desafios: só os identifica, para dizer
+ * O Uivo não tenta resolver nem contornar esses desafios: só os identifica, para dizer
  * "a infraestrutura respondeu, mas o conteúdo não pode ser lido" em vez de acusar queda falsa.
  * A verificação completa fica para quando o dono do site libera o monitor (cabeçalho secreto,
  * IP permitido ou um endereço de saúde fora do desafio).
@@ -62,18 +62,18 @@ export function detectChallenge(status: number, header: Header, body: string): s
 /** Como liberar o monitor em cada provedor (mostrado no painel e no alerta). */
 export function challengeHelp(provider: string): string {
   const header =
-    'Crie uma regra de liberação (bypass/skip) quando o cabeçalho secreto configurado no Uptrue estiver presente';
+    'Crie uma regra de liberação (bypass/skip) quando o cabeçalho secreto configurado no Uivo estiver presente';
   const tips: Record<string, string> = {
     Vercel: `No painel da Vercel → Firewall: desligue o Attack Challenge Mode se não houver ataque, ou ${header.toLowerCase()} (Custom Rule com ação Bypass).`,
-    Cloudflare: `Na Cloudflare → Security → WAF: ${header.toLowerCase()} (Custom Rule com ação Skip), ou libere o IP do servidor do Uptrue.`,
-    Sucuri: 'No painel da Sucuri: adicione o IP do servidor do Uptrue à lista de permissão.',
+    Cloudflare: `Na Cloudflare → Security → WAF: ${header.toLowerCase()} (Custom Rule com ação Skip), ou libere o IP do servidor do Uivo.`,
+    Sucuri: 'No painel da Sucuri: adicione o IP do servidor do Uivo à lista de permissão.',
     'AWS WAF': `No AWS WAF: ${header.toLowerCase()} (regra com ação Allow antes da regra de desafio).`,
-    DataDome: 'No DataDome: adicione o IP ou o cabeçalho do Uptrue às exceções.',
-    Akamai: 'No Akamai: adicione o IP do servidor do Uptrue à lista de permissão.',
-    Wordfence: 'No WordPress → Wordfence → Firewall: adicione o IP do servidor do Uptrue aos IPs permitidos.',
+    DataDome: 'No DataDome: adicione o IP ou o cabeçalho do Uivo às exceções.',
+    Akamai: 'No Akamai: adicione o IP do servidor do Uivo à lista de permissão.',
+    Wordfence: 'No WordPress → Wordfence → Firewall: adicione o IP do servidor do Uivo aos IPs permitidos.',
   };
   return (
     tips[provider] ??
-    `${header}, libere o IP do servidor do Uptrue ou monitore um endereço de saúde que fique fora do desafio.`
+    `${header}, libere o IP do servidor do Uivo ou monitore um endereço de saúde que fique fora do desafio.`
   );
 }

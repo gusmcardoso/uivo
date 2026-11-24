@@ -216,7 +216,7 @@ export async function buildApp(options: AppOptions) {
       const pdf = await renderReport(data);
       return reply
         .header('content-type', 'application/pdf')
-        .header('content-disposition', `attachment; filename="relatorio-uptrue-${m[1]}-${m[2]}.pdf"`)
+        .header('content-disposition', `attachment; filename="relatorio-uivo-${m[1]}-${m[2]}.pdf"`)
         .header('cache-control', 'no-store')
         .send(pdf);
     },

@@ -1,9 +1,9 @@
 {
-  "uid": "uptrue-sites",
-  "title": "Uptrue · Sites",
-  "description": "Disponibilidade, saúde, segurança e vencimentos dos sites monitorados pelo Uptrue.",
+  "uid": "uivo-sites",
+  "title": "Uivo · Sites",
+  "description": "Disponibilidade, saúde, segurança e vencimentos dos sites monitorados pelo Uivo.",
   "tags": [
-    "uptrue"
+    "uivo"
   ],
   "timezone": "browser",
   "schemaVersion": 41,
@@ -31,7 +31,7 @@
       },
       "targets": [
         {
-          "expr": "count(uptrue_site_up == 1) or vector(0)",
+          "expr": "count(uivo_site_up == 1) or vector(0)",
           "range": false,
           "instant": true,
           "refId": "A",
@@ -87,7 +87,7 @@
       },
       "targets": [
         {
-          "expr": "count(uptrue_site_up == 0) or vector(0)",
+          "expr": "count(uivo_site_up == 0) or vector(0)",
           "range": false,
           "instant": true,
           "refId": "A",
@@ -147,7 +147,7 @@
       },
       "targets": [
         {
-          "expr": "min(uptrue_health_score)",
+          "expr": "min(uivo_health_score)",
           "range": false,
           "instant": true,
           "refId": "A",
@@ -213,7 +213,7 @@
       },
       "targets": [
         {
-          "expr": "min(uptrue_ssl_expiry_timestamp_seconds - time()) / 86400",
+          "expr": "min(uivo_ssl_expiry_timestamp_seconds - time()) / 86400",
           "range": false,
           "instant": true,
           "refId": "A",
@@ -280,7 +280,7 @@
       },
       "targets": [
         {
-          "expr": "min(uptrue_domain_expiry_timestamp_seconds - time()) / 86400",
+          "expr": "min(uivo_domain_expiry_timestamp_seconds - time()) / 86400",
           "range": false,
           "instant": true,
           "refId": "A",
@@ -346,7 +346,7 @@
       },
       "targets": [
         {
-          "expr": "uptrue_health_score",
+          "expr": "uivo_health_score",
           "range": false,
           "instant": true,
           "legendFormat": "{{site}}",
@@ -419,7 +419,7 @@
       },
       "targets": [
         {
-          "expr": "uptrue_security_score",
+          "expr": "uivo_security_score",
           "range": false,
           "instant": true,
           "legendFormat": "{{site}}",
@@ -491,7 +491,7 @@
       },
       "targets": [
         {
-          "expr": "uptrue_site_response_seconds",
+          "expr": "uivo_site_response_seconds",
           "range": true,
           "instant": false,
           "legendFormat": "{{site}}",
@@ -540,7 +540,7 @@
       },
       "targets": [
         {
-          "expr": "uptrue_site_uptime_ratio{window=\"7d\"}",
+          "expr": "uivo_site_uptime_ratio{window=\"7d\"}",
           "range": false,
           "instant": true,
           "legendFormat": "{{site}}",
@@ -600,7 +600,7 @@
     {
       "id": 10,
       "type": "logs",
-      "title": "Eventos do Uptrue (quedas, voltas, segurança)",
+      "title": "Eventos do Uivo (quedas, voltas, segurança)",
       "gridPos": {
         "x": 0,
         "y": 21,
@@ -613,7 +613,7 @@
       },
       "targets": [
         {
-          "expr": "{service=\"uptrue\", event=~\".+\"} | json | line_format \"{{.event}} · {{.site}} {{.reason}}{{.title}}\"",
+          "expr": "{service=\"uivo\", event=~\".+\"} | json | line_format \"{{.event}} · {{.site}} {{.reason}}{{.title}}\"",
           "queryType": "range",
           "refId": "A",
           "datasource": {

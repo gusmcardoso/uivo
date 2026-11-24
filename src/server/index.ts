@@ -4,11 +4,12 @@ import { telegramNotifier } from './alerts/telegram.ts';
 import { buildApp } from './app.ts';
 import { hashPassword } from './auth.ts';
 import { config } from './config.ts';
-import { openDb } from './db.ts';
+import { adoptLegacyDb, openDb } from './db.ts';
 import { startScheduler } from './monitor.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const db = openDb(path.join(config.dataDir, 'uptrue.db'));
+const adoptedLegacyDb = adoptLegacyDb(config.dataDir);
+const db = openDb(path.join(config.dataDir, 'uivo.db'));
 
 // Administrador inicial por variável de ambiente (opcional: sem ela, o painel pede o cadastro).
 if (config.adminEmail && config.adminPassword) {
@@ -52,6 +53,7 @@ const scheduler = startScheduler({
 runNow = scheduler.runNow;
 runAudit = scheduler.runAudit;
 
+if (adoptedLegacyDb) app.log.info('Banco do Uptrue (uptrue.db) adotado como uivo.db: dados preservados.');
 if (!config.telegramToken) app.log.warn('Telegram não configurado: alertas só aparecem no log.');
 
 await app.listen({ port: config.port, host: config.host });

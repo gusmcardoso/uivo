@@ -54,7 +54,7 @@ describe('verificação em camadas', () => {
   before(async () => {
     // Imita o firewall da Vercel: desafia quem não tem o cabeçalho de liberação
     server = createServer((req, res) => {
-      if (req.headers['x-uptrue-key'] === SECRET) {
+      if (req.headers['x-uivo-key'] === SECRET) {
         res.writeHead(200, { 'content-type': 'text/html' });
         return res.end('<h1>Gustavo Martins</h1> portfólio');
       }
@@ -90,11 +90,11 @@ describe('verificação em camadas', () => {
   });
 
   it('com o cabeçalho de liberação, a verificação volta a ser completa', async () => {
-    const r = await checkHttp(`${base}/`, { keyword: 'Gustavo', headers: { 'x-uptrue-key': SECRET } });
+    const r = await checkHttp(`${base}/`, { keyword: 'Gustavo', headers: { 'x-uivo-key': SECRET } });
     assert.equal(r.ok, true);
     assert.equal(r.statusCode, 200);
     assert.equal(r.challenge, null);
-    const wrong = await checkHttp(`${base}/`, { keyword: 'Gustavo', headers: { 'x-uptrue-key': 'errado' } });
+    const wrong = await checkHttp(`${base}/`, { keyword: 'Gustavo', headers: { 'x-uivo-key': 'errado' } });
     assert.equal(wrong.challenge, 'Vercel');
   });
 
@@ -102,7 +102,7 @@ describe('verificação em camadas', () => {
     const r = await auditSecurity(`${base}/`);
     assert.match(r.error ?? '', /desafio anti-bot \(Vercel\)/);
     assert.equal(r.findings.length, 0);
-    const ok = await auditSecurity(`${base}/`, fetch, { 'x-uptrue-key': SECRET });
+    const ok = await auditSecurity(`${base}/`, fetch, { 'x-uivo-key': SECRET });
     assert.equal(ok.error, null);
   });
 
@@ -137,7 +137,7 @@ describe('verificação em camadas', () => {
 
     it('usa os cabeçalhos de liberação salvos no site', async () => {
       db.prepare('UPDATE sites SET custom_headers = ? WHERE id = 1').run(
-        JSON.stringify({ 'x-uptrue-key': SECRET }),
+        JSON.stringify({ 'x-uivo-key': SECRET }),
       );
       const site = await check();
       assert.equal(site?.last_challenge, null);
@@ -170,7 +170,7 @@ describe('cabeçalhos de liberação na API', () => {
       url: '/api/setup',
       payload: { email: 'admin@exemplo.com', password: 'senha-forte-123' },
     });
-    const c = res.cookies.find((x) => x.name === 'uptrue_session');
+    const c = res.cookies.find((x) => x.name === 'uivo_session');
     cookie = `${c?.name}=${c?.value}`;
   });
 
@@ -183,9 +183,9 @@ describe('cabeçalhos de liberação na API', () => {
     });
 
   it('salva, mas nunca devolve o valor; só o nome', async () => {
-    const created = await create({ 'X-Uptrue-Key': 'segredo-123' });
+    const created = await create({ 'X-Uivo-Key': 'segredo-123' });
     assert.equal(created.statusCode, 201);
-    assert.deepEqual(created.json().custom_header_names, ['x-uptrue-key']);
+    assert.deepEqual(created.json().custom_header_names, ['x-uivo-key']);
     assert.ok(!created.body.includes('segredo-123'));
     const list = await app.inject({ url: '/api/sites', headers: { cookie } });
     assert.ok(!list.body.includes('segredo-123'));
@@ -193,10 +193,10 @@ describe('cabeçalhos de liberação na API', () => {
   });
 
   it('valor vazio mantém o segredo salvo; omitir o nome remove', async () => {
-    const id = (await create({ 'x-uptrue-key': 'segredo-123' })).json().id;
+    const id = (await create({ 'x-uivo-key': 'segredo-123' })).json().id;
     const patch = (headers: Record<string, string>) =>
       app.inject({ method: 'PATCH', url: `/api/sites/${id}`, headers: { cookie }, payload: { headers } });
-    assert.deepEqual((await patch({ 'x-uptrue-key': '' })).json().custom_header_names, ['x-uptrue-key']);
+    assert.deepEqual((await patch({ 'x-uivo-key': '' })).json().custom_header_names, ['x-uivo-key']);
     assert.deepEqual((await patch({})).json().custom_header_names, []);
   });
 

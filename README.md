@@ -1,12 +1,12 @@
 <div align="center">
 
-# Uptrue
+# Uivo
 
 **Seu site está no ar de verdade?**
 
 Monitor de saúde de sites, self-hosted e open source. Vai além do uptime: auditoria de segurança diária, detecção de adulteração, SSL e vencimento de domínio (inclusive `.com.br` no Registro.br), com uma nota de saúde de 0 a 100 e alertas no Telegram.
 
-[![CI/CD](https://github.com/gusmcardoso/uptrue/actions/workflows/ci.yml/badge.svg)](https://github.com/gusmcardoso/uptrue/actions/workflows/ci.yml)
+[![CI/CD](https://github.com/gusmcardoso/uivo/actions/workflows/ci.yml/badge.svg)](https://github.com/gusmcardoso/uivo/actions/workflows/ci.yml)
 [![Licença: AGPL-3.0](https://img.shields.io/badge/licen%C3%A7a-AGPL--3.0-10b981)](LICENSE)
 ![Node 24](https://img.shields.io/badge/node-24-339933?logo=node.js&logoColor=white)
 ![Docker amd64 | arm64](https://img.shields.io/badge/docker-amd64%20%7C%20arm64-2496ED?logo=docker&logoColor=white)
@@ -15,17 +15,19 @@ Monitor de saúde de sites, self-hosted e open source. Vai além do uptime: audi
 
 </div>
 
-![Painel do Uptrue](docs/painel.webp)
+![Painel do Uivo](docs/painel.webp)
 
 ---
 
 ## Português
 
+> Até a v0.1.10 o projeto se chamava **Uptrue**. O nome mudou porque já existe outro produto de monitoramento com esse nome; instalações antigas continuam funcionando (veja a [migração](docs/DEPLOY.md#7-migração-de-uma-instalação-uptrue)).
+
 ### Por que mais um monitor?
 
-Monitores tradicionais perguntam só *"o servidor respondeu?"*. O problema de quem mantém sites de clientes costuma ser outro: o site responde 200, mas a página está em branco, o SSL vence semana que vem ou o domínio expira sem ninguém perceber. O Uptrue responde **"o site está saudável, seguro e funcionando para o cliente?"**: o Uptime Kuma diz se o servidor respondeu; o Uptrue também diz se o `.env` vazou, se apareceu um script estranho na página ou se o certificado vence semana que vem.
+Monitores tradicionais perguntam só *"o servidor respondeu?"*. O problema de quem mantém sites de clientes costuma ser outro: o site responde 200, mas a página está em branco, o SSL vence semana que vem ou o domínio expira sem ninguém perceber. O Uivo responde **"o site está saudável, seguro e funcionando para o cliente?"**: o Uptime Kuma diz se o servidor respondeu; o Uivo também diz se o `.env` vazou, se apareceu um script estranho na página ou se o certificado vence semana que vem.
 
-### O que o Uptrue faz
+### O que o Uivo faz
 
 | Recurso | Detalhe |
 | --- | --- |
@@ -49,8 +51,8 @@ Monitores tradicionais perguntam só *"o servidor respondeu?"*. O problema de qu
 ### Rodando com Docker
 
 ```bash
-curl -O https://raw.githubusercontent.com/gusmcardoso/uptrue/main/compose.yml
-curl -o .env https://raw.githubusercontent.com/gusmcardoso/uptrue/main/.env.example
+curl -O https://raw.githubusercontent.com/gusmcardoso/uivo/main/compose.yml
+curl -o .env https://raw.githubusercontent.com/gusmcardoso/uivo/main/.env.example
 # edite o .env: AUTH_SECRET (obrigatório) e, se quiser alertas, o Telegram
 docker compose up -d
 ```
@@ -69,21 +71,21 @@ Abra `http://localhost:3000` e crie a conta de administrador no primeiro acesso.
 
 ### Sites atrás de firewall (desafio anti-bot)
 
-Vercel, Cloudflare e outros firewalls podem responder com um desafio ("verificando seu navegador") para quem não executa JavaScript, como qualquer monitor. Em vez de acusar queda falsa, o Uptrue **reconhece o desafio** e verifica em camadas: se DNS, conexão, certificado e a resposta do servidor estão ok, o site está **no ar, com o conteúdo não verificado** (sem incidente, sem derrubar o uptime; aviso único no Telegram explicando como liberar).
+Vercel, Cloudflare e outros firewalls podem responder com um desafio ("verificando seu navegador") para quem não executa JavaScript, como qualquer monitor. Em vez de acusar queda falsa, o Uivo **reconhece o desafio** e verifica em camadas: se DNS, conexão, certificado e a resposta do servidor estão ok, o site está **no ar, com o conteúdo não verificado** (sem incidente, sem derrubar o uptime; aviso único no Telegram explicando como liberar).
 
-O Uptrue **não tenta resolver nem contornar** desafios. Para a verificação completa (página e palavra-chave), escolha uma forma autorizada:
+O Uivo **não tenta resolver nem contornar** desafios. Para a verificação completa (página e palavra-chave), escolha uma forma autorizada:
 
 | Forma | Como |
 | --- | --- |
-| Cabeçalho de liberação | Em **Editar → Cabeçalhos de liberação**, cadastre por exemplo `x-uptrue-key` com um valor secreto e crie no firewall uma regra que libere quem enviar esse cabeçalho (Vercel: Custom Rule com ação *Bypass*; Cloudflare: WAF Custom Rule com ação *Skip*). O valor fica só no servidor e nunca é devolvido pela API |
-| IP permitido | Libere o IP do servidor do Uptrue no firewall |
+| Cabeçalho de liberação | Em **Editar → Cabeçalhos de liberação**, cadastre por exemplo `x-uivo-key` com um valor secreto e crie no firewall uma regra que libere quem enviar esse cabeçalho (Vercel: Custom Rule com ação *Bypass*; Cloudflare: WAF Custom Rule com ação *Skip*). O valor fica só no servidor e nunca é devolvido pela API |
+| IP permitido | Libere o IP do servidor do Uivo no firewall |
 | Endereço de saúde | Monitore um caminho que fique fora do desafio (ex.: `/healthz`) |
 
-No Prometheus, `uptrue_site_content_verified` é 0 enquanto o conteúdo estiver barrado.
+No Prometheus, `uivo_site_content_verified` é 0 enquanto o conteúdo estiver barrado.
 
 ### Onde o tempo foi gasto
 
-"Respondeu em 420 ms" não diz o que fazer. O Uptrue abre uma **conexão nova a cada checagem** (sem reaproveitar, para não mascarar DNS e TLS) e mede cada etapa separadamente. Se o servidor responde por mais de 40% do tempo, o painel diz isso e sugere o caminho (cache, CDN, DNS mais rápido, compressão).
+"Respondeu em 420 ms" não diz o que fazer. O Uivo abre uma **conexão nova a cada checagem** (sem reaproveitar, para não mascarar DNS e TLS) e mede cada etapa separadamente. Se o servidor responde por mais de 40% do tempo, o painel diz isso e sugere o caminho (cache, CDN, DNS mais rápido, compressão).
 
 ![Tempo por etapa](docs/tempo.webp)
 
@@ -105,17 +107,17 @@ Um comando sobe a pilha inteira, já configurada, com dashboards prontos:
 scripts/observability.sh init     # gera no .env só os segredos que faltam (nunca sobrescreve)
 scripts/observability.sh up       # confere o ambiente, sobe e espera o Grafana (http://localhost:3001)
 scripts/observability.sh status   # containers e saúde de cada alvo do Prometheus
-scripts/observability.sh down     # para só a observabilidade; o Uptrue continua e os dados ficam
+scripts/observability.sh down     # para só a observabilidade; o Uivo continua e os dados ficam
 ```
 
 O `up` confere antes de subir (segredos definidos e fortes, Docker respondendo, Compose 2.23+, porta do Grafana livre) e diz em português o que falta, em vez de deixar o compose falhar no meio. Sem o script, o equivalente é `docker compose --profile observability up -d` com `METRICS_TOKEN` e `GRAFANA_ADMIN_PASSWORD` no `.env`.
 
 | Serviço | Papel |
 | --- | --- |
-| Prometheus | Coleta as métricas do Uptrue, da máquina e dos containers (retenção de 15 dias) |
+| Prometheus | Coleta as métricas do Uivo, da máquina e dos containers (retenção de 15 dias) |
 | node_exporter | CPU, memória, disco e rede do servidor |
 | cAdvisor | Consumo de cada container |
-| Loki + Alloy | Logs de todos os containers; os eventos do Uptrue ganham o rótulo `event` |
+| Loki + Alloy | Logs de todos os containers; os eventos do Uivo ganham o rótulo `event` |
 | Grafana | Três dashboards provisionados: **Sites**, **Servidor** e **Containers** |
 
 ![Dashboard de sites no Grafana](docs/grafana.webp)
@@ -141,19 +143,19 @@ Marque um site como **público** no painel e ele aparece em `http://seu-servidor
 
 ### Prometheus e Grafana
 
-Com `METRICS_TOKEN` definido, o `/metrics` exporta `uptrue_health_score`, `uptrue_security_score`, `uptrue_site_up`, `uptrue_site_response_seconds`, `uptrue_site_uptime_ratio` (24 h, 7 e 30 dias) e os vencimentos de SSL e domínio. Exemplo de `prometheus.yml`:
+Com `METRICS_TOKEN` definido, o `/metrics` exporta `uivo_health_score`, `uivo_security_score`, `uivo_site_up`, `uivo_site_response_seconds`, `uivo_site_uptime_ratio` (24 h, 7 e 30 dias) e os vencimentos de SSL e domínio. Exemplo de `prometheus.yml`:
 
 ```yaml
 scrape_configs:
-  - job_name: uptrue
+  - job_name: uivo
     scrape_interval: 60s
     authorization:
       credentials: "<METRICS_TOKEN>"
     static_configs:
-      - targets: ["uptrue:3000"]
+      - targets: ["uivo:3000"]
 ```
 
-Alerta de SSL perto de vencer (`expr`): `uptrue_ssl_expiry_timestamp_seconds - time() < 14 * 86400`.
+Alerta de SSL perto de vencer (`expr`): `uivo_ssl_expiry_timestamp_seconds - time() < 14 * 86400`.
 
 ### Produção (servidor com HTTPS e deploy automático)
 
@@ -189,7 +191,7 @@ npm run lint && npm run typecheck
 | Qualidade | Biome, `tsc`, `node:test` |
 | Entrega | Docker multi-stage sem root, GitHub Actions, imagem multi-arquitetura no GHCR, Dependabot |
 
-**Pipeline** (a cada push e pull request): lint, tipos, testes e build; a pilha de observabilidade sobe inteira e cada painel é consultado; o `update.sh` é testado como num servidor (atualiza, recusa versão inválida, faz rollback); depois sobe a imagem com `docker compose` e faz um teste de ponta a ponta (painel, API protegida, cadastro, o Uptrue monitorando a si mesmo, página de status, `/metrics` com token, container sem root); na `main` e em tags `v*`, publica a imagem `amd64` + `arm64` no GHCR.
+**Pipeline** (a cada push e pull request): lint, tipos, testes e build; a pilha de observabilidade sobe inteira e cada painel é consultado; o `update.sh` é testado como num servidor (atualiza, recusa versão inválida, faz rollback); depois sobe a imagem com `docker compose` e faz um teste de ponta a ponta (painel, API protegida, cadastro, o Uivo monitorando a si mesmo, página de status, `/metrics` com token, container sem root); na `main` e em tags `v*`, publica a imagem `amd64` + `arm64` no GHCR.
 
 ### Roadmap
 
@@ -197,6 +199,7 @@ npm run lint && npm run typecheck
 - [x] **v0.1.1**: página de status pública e `/metrics` para Prometheus/Grafana
 - [x] **v0.1.2**: auditoria de segurança, detecção de adulteração, nota de saúde e eventos para o Loki
 - [x] **v0.1.3**: tempo por etapa (DNS, conexão, TLS, servidor, download), percentis e diagnóstico
+- [ ] **v0.2.0**: novo nome (**Uptrue → Uivo**) e nova marca; banco, backups e painéis antigos continuam valendo (o `uptrue.db` é adotado sozinho; veja [migração do servidor](docs/DEPLOY.md#7-migração-de-uma-instalação-uptrue)); `update.sh` faz rollback se a versão nova subir sem os dados
 - [x] **v0.1.10**: relatório mensal em PDF (botão **Relatório** no painel e `/api/reports/monthly`)
 - [x] **v0.1.9**: log do backup limpo, erros do backup externo em português e caminho completo no `--fetch`
 - [x] **v0.1.8**: `restore.sh` testado e cópia externa criptografada dos backups (rclone crypt), ambos simulados no CI
@@ -215,10 +218,10 @@ npm run lint && npm run typecheck
 
 ## English
 
-**Is your site *really* up?** Uptrue is a self-hosted, open-source site health monitor. Beyond plain uptime, it runs a daily passive security audit (exposed `.env`/`.git`/backups, security headers, TLS, tampering detection), computes a 0–100 health score, and tracks SSL certificate expiry and domain expiry through RDAP (using each TLD's official server, including Brazil's Registro.br), and sends Telegram alerts on downtime, recovery and upcoming expirations.
+**Is your site *really* up?** Uivo is a self-hosted, open-source site health monitor. Beyond plain uptime, it runs a daily passive security audit (exposed `.env`/`.git`/backups, security headers, TLS, tampering detection), computes a 0–100 health score, and tracks SSL certificate expiry and domain expiry through RDAP (using each TLD's official server, including Brazil's Registro.br), and sends Telegram alerts on downtime, recovery and upcoming expirations.
 
 - **Quick start:** grab `compose.yml` and `.env.example`, set `AUTH_SECRET`, run `docker compose up -d`, then open `http://localhost:3000` and create the admin account.
-- **Images:** multi-arch (`amd64`, `arm64`) on `ghcr.io/gusmcardoso/uptrue`.
+- **Images:** multi-arch (`amd64`, `arm64`) on `ghcr.io/gusmcardoso/uivo`.
 - **Stack:** Node 24 + TypeScript + Fastify, built-in `node:sqlite`, React + Vite + Tailwind.
 - **Status:** v0.1.5 (development): uptime (with anti-bot challenge detection and layered verification for sites behind Vercel/Cloudflare firewalls), SSL and domain expiry, security audit with health score, per-phase timing, public status page, Prometheus metrics and a one-command observability profile (Grafana, Loki, Alloy, node_exporter, cAdvisor).
 

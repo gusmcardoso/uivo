@@ -167,7 +167,7 @@ describe('API do relatório', () => {
       url: '/api/setup',
       payload: { email: 'admin@exemplo.com', password: 'senha-forte-123' },
     });
-    const c = setup.cookies.find((x) => x.name === 'uptrue_session');
+    const c = setup.cookies.find((x) => x.name === 'uivo_session');
     const cookie = `${c?.name}=${c?.value}`;
     for (const bad of ['2026-13', 'abc', '2026-1', '1999-01']) {
       assert.equal(
@@ -184,7 +184,7 @@ describe('API do relatório', () => {
     assert.equal(res.headers['content-type'], 'application/pdf');
     assert.match(
       String(res.headers['content-disposition']),
-      /attachment; filename="relatorio-uptrue-2026-11\.pdf"/,
+      /attachment; filename="relatorio-uivo-2026-11\.pdf"/,
     );
     assert.equal(res.rawPayload.subarray(0, 5).toString(), '%PDF-');
   });

@@ -1,9 +1,9 @@
 {
-  "uid": "uptrue-servidor",
-  "title": "Uptrue · Servidor",
+  "uid": "uivo-servidor",
+  "title": "Uivo · Servidor",
   "description": "CPU, memória, disco e rede da máquina (node_exporter).",
   "tags": [
-    "uptrue",
+    "uivo",
     "node"
   ],
   "timezone": "browser",

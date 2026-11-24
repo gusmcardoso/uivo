@@ -10,11 +10,11 @@
 # e, por cima dele, um remote "crypt" que criptografa conteúdo e nomes antes do envio.
 #   OFFSITE_REMOTE     remote de destino (padrão offsite:)
 #   OFFSITE_KEEP_DAYS  retenção no destino (padrão 30)
-#   BACKUP_DIR         backups locais (padrão /opt/backups/uptrue)
+#   BACKUP_DIR         backups locais (padrão /opt/backups/uivo)
 set -euo pipefail
 cd "$(dirname "$0")" || exit 1
 
-SRC="${BACKUP_DIR:-/opt/backups/uptrue}"
+SRC="${BACKUP_DIR:-/opt/backups/uivo}"
 CONF="${RCLONE_CONFIG_DIR:-$PWD/rclone}"
 REMOTE="${OFFSITE_REMOTE:-offsite:}"
 KEEP="${OFFSITE_KEEP_DAYS:-30}"
@@ -52,7 +52,7 @@ case "${1:-}" in
     ;;
   --fetch)
     name="${2:-}"
-    [[ "$name" =~ ^uptrue-[0-9A-Za-z_-]+\.db\.gz$ ]] || die "informe o nome do backup (veja --list)"
+    [[ "$name" =~ ^(uivo|uptrue)-[0-9A-Za-z_-]+\.db\.gz$ ]] || die "informe o nome do backup (veja --list)"
     rc_or_explain copy "$REMOTE$name" /data/ >/dev/null
     gzip -t "$SRC/$name" || die "o arquivo baixado está corrompido"
     log "baixado: $SRC/$name  (restaure com: ./restore.sh $SRC/$name)"
@@ -62,7 +62,7 @@ case "${1:-}" in
   *) die "uso: ./offsite-backup.sh [--list | --fetch NOME]" ;;
 esac
 
-latest=$(ls -1t "$SRC"/uptrue-*.db.gz 2>/dev/null | head -1) || true
+latest=$(ls -1t "$SRC"/uivo-*.db.gz 2>/dev/null | head -1) || true
 [ -n "${latest:-}" ] || die "nenhum backup local em $SRC para enviar"
 name=$(basename "$latest")
 

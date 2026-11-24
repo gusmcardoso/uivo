@@ -1,20 +1,23 @@
+import { BRAND } from '../../shared/brand.ts';
+
 export function Logo() {
   return (
-    <div className="flex items-center gap-2.5">
-      <svg viewBox="0 0 32 32" className="size-8" aria-hidden="true">
-        <circle cx="16" cy="16" r="14" className="fill-emerald-500" />
-        <path
-          d="M6 17h6l3-7 4 13 3-6h4"
-          className="stroke-emerald-950"
-          strokeWidth="3"
-          fill="none"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-      <span className="text-lg font-semibold tracking-tight">
-        Up<span className="text-emerald-400">true</span>
-      </span>
-    </div>
+    <svg
+      viewBox={`0 0 ${BRAND.width} ${BRAND.height}`}
+      className="h-9 w-auto text-zinc-200"
+      role="img"
+      aria-label="Uivo"
+    >
+      <path d={BRAND.moon} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" />
+      <path
+        d={BRAND.pulse}
+        fill="none"
+        stroke={BRAND.amber.onDark}
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d={BRAND.wordmark} fill="currentColor" />
+    </svg>
   );
 }

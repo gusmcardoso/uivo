@@ -66,7 +66,7 @@ export interface DomainResult {
 
 const HEADERS = {
   accept: 'application/rdap+json, application/json',
-  'user-agent': 'Uptrue (+https://github.com/gusmcardoso/uptrue)',
+  'user-agent': 'Uivo (+https://github.com/gusmcardoso/uivo)',
 };
 const BOOTSTRAP_URL = 'https://data.iana.org/rdap/dns.json';
 const FALLBACK = 'https://rdap.org/';

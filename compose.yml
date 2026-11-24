@@ -1,4 +1,4 @@
-# Uptrue com Docker:
+# Uivo com Docker:
 #   cp .env.example .env    # defina AUTH_SECRET (e o Telegram, se quiser alertas)
 #   docker compose up -d    # http://localhost:3000 → crie a conta no primeiro acesso
 #
@@ -9,12 +9,12 @@
 #   docker compose --profile observability up -d    # Grafana em http://localhost:3001
 
 services:
-  uptrue:
-    image: ghcr.io/gusmcardoso/uptrue:${UPTRUE_TAG:-latest}
+  uivo:
+    image: ${UIVO_IMAGE:-ghcr.io/gusmcardoso/uivo}:${UIVO_TAG:-latest}
     build: .
     restart: unless-stopped
     ports:
-      - "${UPTRUE_PORT:-3000}:3000"
+      - "${UIVO_PORT:-3000}:3000"
     environment:
       AUTH_SECRET: ${AUTH_SECRET:?defina AUTH_SECRET no .env}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
@@ -27,7 +27,7 @@ services:
       REPORT_AUTHOR: ${REPORT_AUTHOR:-}
       TZ: ${TZ:-America/Sao_Paulo}
     volumes:
-      - uptrue-data:/data
+      - uivo-data:/data
 
   # ─── Perfil "observability" ─────────────────────────────────────────────────
   # Só o Grafana é publicado, e apenas em 127.0.0.1 (use um proxy reverso com HTTPS
@@ -45,8 +45,8 @@ services:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     secrets:
-      - uptrue_metrics_token
-    depends_on: [uptrue]
+      - uivo_metrics_token
+    depends_on: [uivo]
 
   node-exporter:
     image: prom/node-exporter:v1.9.1
@@ -118,7 +118,7 @@ services:
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
       GF_NEWS_NEWS_FEED_ENABLED: "false"
-      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/uptrue-sites.json
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/uivo-sites.json
     volumes:
       - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
@@ -129,13 +129,13 @@ services:
 
 # Segredos lidos do ambiente (.env): não ficam em arquivo dentro do repositório.
 secrets:
-  uptrue_metrics_token:
+  uivo_metrics_token:
     environment: METRICS_TOKEN
   grafana_admin_password:
     environment: GRAFANA_ADMIN_PASSWORD
 
 volumes:
-  uptrue-data:
+  uivo-data:
   prometheus-data:
   loki-data:
   alloy-data:

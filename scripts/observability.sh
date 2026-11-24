@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Perfil de observabilidade do Uptrue (Prometheus, Grafana, Loki, Alloy, node_exporter, cAdvisor).
+# Perfil de observabilidade do Uivo (Prometheus, Grafana, Loki, Alloy, node_exporter, cAdvisor).
 #
 #   scripts/observability.sh check    confere .env, Docker e porta antes de subir
 #   scripts/observability.sh init     gera no .env só os segredos que faltam (nunca sobrescreve)
 #   scripts/observability.sh up       confere, sobe a pilha e espera o Grafana ficar pronto
 #   scripts/observability.sh status   containers e saúde dos alvos do Prometheus
 #   scripts/observability.sh logs     logs da pilha (Ctrl+C para sair)
-#   scripts/observability.sh down     para só a observabilidade (o Uptrue continua; os dados ficam)
+#   scripts/observability.sh down     para só a observabilidade (o Uivo continua; os dados ficam)
 #
 # ENV_FILE=/caminho/.env muda o arquivo de variáveis (padrão: .env na raiz do projeto).
 set -uo pipefail
@@ -186,7 +186,7 @@ cmd_status() {
 
 cmd_down() {
   compose --profile observability stop "${SERVICES[@]}" && compose --profile observability rm -f "${SERVICES[@]}" >/dev/null
-  ok "observabilidade parada (o Uptrue continua rodando; os dados ficam nos volumes)"
+  ok "observabilidade parada (o Uivo continua rodando; os dados ficam nos volumes)"
 }
 
 case "${1:-}" in

@@ -1,4 +1,5 @@
 import PDFDocument from 'pdfkit';
+import { BRAND } from '../../shared/brand.ts';
 import type { Severity } from '../checks/security.ts';
 import type { ReportData, ReportSite } from './data.ts';
 
@@ -46,27 +47,19 @@ export function periodLabel(from: number): string {
 type Doc = InstanceType<typeof PDFDocument>;
 
 function logo(doc: Doc, x: number, y: number) {
+  // marca do Uivo (versão para fundo claro), desenhada em vetor a partir dos mesmos traços do painel
+  const scale = 30 / BRAND.height;
+  doc.save().translate(x, y).scale(scale);
+  doc.path(BRAND.moon).lineWidth(2).lineJoin('round').strokeColor(C.text).stroke();
   doc
-    .save()
-    .circle(x + 11, y + 11, 11)
-    .fill(C.brand);
-  doc
-    .moveTo(x + 4, y + 12)
-    .lineTo(x + 8, y + 12)
-    .lineTo(x + 10, y + 7)
-    .lineTo(x + 13, y + 16)
-    .lineTo(x + 15, y + 11)
-    .lineTo(x + 18, y + 11)
-    .lineWidth(1.8)
-    .strokeColor('#ffffff')
-    .stroke()
-    .restore();
-  doc
-    .font('Helvetica-Bold')
-    .fontSize(14)
-    .fillColor(C.text)
-    .text('Up', x + 28, y + 4, { continued: true });
-  doc.fillColor(C.brand).text('true');
+    .path(BRAND.pulse)
+    .lineWidth(2)
+    .lineCap('round')
+    .lineJoin('round')
+    .strokeColor(BRAND.amber.onLight)
+    .stroke();
+  doc.path(BRAND.wordmark).fillColor(C.text).fill();
+  doc.restore();
 }
 
 function card(doc: Doc, x: number, y: number, w: number, label: string, value: string, color = C.text) {
@@ -384,8 +377,8 @@ export function renderReport(data: ReportData, options: { compress?: boolean } =
       compress: options.compress ?? true,
       info: {
         Title: data.title,
-        Author: data.author ?? 'Uptrue',
-        Creator: 'Uptrue',
+        Author: data.author ?? 'Uivo',
+        Creator: 'Uivo',
         Subject: periodLabel(data.from),
       },
     });
@@ -415,7 +408,7 @@ export function renderReport(data: ReportData, options: { compress?: boolean } =
         .font('Helvetica')
         .fontSize(7.5)
         .fillColor(C.muted)
-        .text(`${data.title} · ${periodLabel(data.from)} · gerado pelo Uptrue`, M, y, { lineBreak: false })
+        .text(`${data.title} · ${periodLabel(data.from)} · gerado pelo Uivo`, M, y, { lineBreak: false })
         .text(`página ${i - range.start + 1} de ${range.count}`, M, y, {
           width: doc.page.width - 2 * M,
           align: 'right',
