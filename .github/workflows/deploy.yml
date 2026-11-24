@@ -52,15 +52,40 @@ jobs:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
+          fail() { echo "::error title=Deploy::$1"; exit 1; }
           for v in DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS; do
-            [ -n "${!v}" ] || { echo "::error::segredo $v não configurado no environment production"; exit 1; }
+            [ -n "${!v}" ] || fail "segredo $v não configurado no environment production"
           done
+          # Segredos colados costumam trazer espaço ou quebra de linha invisível: limpa e valida
+          user=$(printf '%s' "$DEPLOY_USER" | tr -d '[:space:]')
+          host=$(printf '%s' "$DEPLOY_HOST" | tr -d '[:space:]')
+          [[ "$user" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || fail "DEPLOY_USER inválido: use só o nome do usuário (ex.: ubuntu)"
+          [[ "$host" =~ ^[A-Za-z0-9.:-]+$ ]] || fail "DEPLOY_HOST inválido: use só o IP ou o nome do servidor (sem https:// nem barras)"
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
-          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # remove \r (chave copiada no Windows) e garante a quebra de linha final
+          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
+          ssh-keygen -y -f ~/.ssh/deploy > /dev/null 2>&1 ||
+            fail "DEPLOY_SSH_KEY não é uma chave privada válida: cole o arquivo inteiro, incluindo as linhas BEGIN e END"
+          grep -qE "^[^#]*${host//./\\.}[ ,]" ~/.ssh/known_hosts ||
+            fail "DEPLOY_KNOWN_HOSTS não menciona $host: gere com  ssh-keyscan -t ed25519 $host"
+
           # A chave só consegue rodar o deploy-entry.sh (comando forçado no servidor); o "comando" é a versão
+          set +e
           ssh -i ~/.ssh/deploy -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
-            "$DEPLOY_USER@$DEPLOY_HOST" "$VERSION"
+            -o ConnectTimeout=20 "$user@$host" "$VERSION" 2> >(tee /tmp/ssh.err >&2)
+          code=$?
+          set -e
+          if [ "$code" = 255 ]; then
+            err=$(cat /tmp/ssh.err)
+            case "$err" in
+              *"Host key verification failed"*) fail "DEPLOY_KNOWN_HOSTS não confere com o servidor: gere de novo com  ssh-keyscan -t ed25519 $host" ;;
+              *"Permission denied"*) fail "chave recusada pelo servidor: confira a linha da chave de deploy no ~/.ssh/authorized_keys" ;;
+              *"timed out"* | *"Connection refused"* | *"No route"*) fail "não conectou em $host:22 (servidor desligado, IP errado ou porta 22 bloqueada)" ;;
+              *) fail "falha de conexão SSH: $(echo "$err" | tail -1)" ;;
+            esac
+          fi
+          exit "$code"
 
       - name: Conferir o site no ar
         if: vars.DEPLOY_URL != ''
