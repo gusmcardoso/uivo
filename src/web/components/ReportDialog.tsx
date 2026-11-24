@@ -104,7 +104,7 @@ export function ReportDialog({ sites, onClose }: { sites: Site[]; onClose: () =>
               <label key={s.id} className="flex items-center gap-2 text-sm text-zinc-300">
                 <input
                   type="checkbox"
-                  className="accent-emerald-500"
+                  className="accent-sky-300"
                   checked={selected.includes(s.id)}
                   onChange={() => toggle(s.id)}
                 />

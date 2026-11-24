@@ -23,9 +23,16 @@ export function Login({ setup, onDone }: { setup: boolean; onDone: () => void })
   }
 
   return (
-    <main className="grid min-h-dvh place-items-center px-4">
-      <form onSubmit={submit} className="card w-full max-w-sm space-y-5 p-7">
-        <Logo />
+    <main className="relative grid min-h-dvh place-items-center overflow-hidden px-4">
+      <div
+        className="pointer-events-none absolute top-1/3 left-1/2 size-[36rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-sky-400/[0.06] blur-3xl"
+        aria-hidden="true"
+      />
+      <form
+        onSubmit={submit}
+        className="card relative w-full max-w-sm space-y-5 bg-zinc-900/70 p-7 backdrop-blur"
+      >
+        <Logo className="h-10" />
         <div>
           <h1 className="text-lg font-semibold">{setup ? 'Crie a conta de administrador' : 'Entrar'}</h1>
           <p className="mt-1 text-sm text-zinc-400">

@@ -68,6 +68,25 @@ export interface TimingSummary {
   } | null;
 }
 
+interface WindowStats {
+  n: number;
+  fails: number;
+  avg: number | null;
+  min: number | null;
+  max: number | null;
+}
+
+/** Um intervalo do gráfico comparado com o mesmo horário em dias anteriores. */
+export interface Moment {
+  at: number;
+  span: number;
+  current: WindowStats;
+  yesterday: WindowStats;
+  lastWeek: WindowStats;
+  typical: { avg: number | null; days: number };
+  incidents: { started_at: number; ended_at: number | null; reason: string | null }[];
+}
+
 export interface Incident {
   id: number;
   started_at: number;
@@ -142,4 +161,6 @@ export const api = {
   timing: (id: number, range: string) =>
     request<TimingSummary>('GET', `/api/sites/${id}/timing?range=${range}`),
   incidents: (id: number) => request<Incident[]>('GET', `/api/sites/${id}/incidents`),
+  moment: (id: number, at: number, span: number) =>
+    request<Moment>('GET', `/api/sites/${id}/moment?at=${at}&span=${span}`),
 };

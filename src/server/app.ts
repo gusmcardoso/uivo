@@ -360,6 +360,55 @@ export async function buildApp(options: AppOptions) {
     },
   );
 
+  // Detalhe de um ponto do gráfico, comparado com o mesmo horário em dias anteriores
+  app.get<{ Params: { id: string }; Querystring: { at?: string; span?: string } }>(
+    '/api/sites/:id/moment',
+    { preHandler: requireAuth },
+    async (req, reply) => {
+      const site = getSite(db, Number(req.params.id));
+      if (!site) return reply.code(404).send({ error: 'Site não encontrado.' });
+      const at = Number(req.query.at);
+      const span = Number(req.query.span);
+      if (!Number.isFinite(at) || !Number.isFinite(span) || span < 60_000 || span > DAY) {
+        return reply.code(400).send({ error: 'Informe at e span (em ms, de 1 minuto a 1 dia).' });
+      }
+      const query = db.prepare(
+        `SELECT COUNT(*) AS n, COALESCE(SUM(1 - ok), 0) AS fails,
+           ROUND(AVG(CASE WHEN ok = 1 THEN response_ms END)) AS avg,
+           MIN(CASE WHEN ok = 1 THEN response_ms END) AS min, MAX(CASE WHEN ok = 1 THEN response_ms END) AS max
+         FROM checks WHERE site_id = ? AND at >= ? AND at < ?`,
+      );
+      const window = (from: number) =>
+        query.get(site.id, from, from + span) as {
+          n: number;
+          fails: number;
+          avg: number | null;
+          min: number | null;
+          max: number | null;
+        };
+      // "Normal para este horário": média do mesmo intervalo nos 7 dias anteriores (só dias com dados)
+      const previous = [1, 2, 3, 4, 5, 6, 7].map((d) => window(at - d * DAY).avg).filter((v) => v !== null);
+      const incidents = db
+        .prepare(
+          `SELECT started_at, ended_at, reason FROM incidents
+           WHERE site_id = ? AND started_at < ? AND (ended_at IS NULL OR ended_at > ?) ORDER BY started_at`,
+        )
+        .all(site.id, at + span, at);
+      return {
+        at,
+        span,
+        current: window(at),
+        yesterday: window(at - DAY),
+        lastWeek: window(at - 7 * DAY),
+        typical: {
+          avg: previous.length ? Math.round(previous.reduce((a, b) => a + b, 0) / previous.length) : null,
+          days: previous.length,
+        },
+        incidents,
+      };
+    },
+  );
+
   app.get<{ Params: { id: string }; Querystring: { range?: string } }>(
     '/api/sites/:id/timing',
     { preHandler: requireAuth },

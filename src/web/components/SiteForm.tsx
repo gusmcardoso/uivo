@@ -130,7 +130,7 @@ export function SiteForm({
         <label className="flex items-center gap-2 text-sm text-zinc-300">
           <input
             type="checkbox"
-            className="accent-emerald-500"
+            className="accent-sky-300"
             checked={form.check_domain}
             onChange={(e) => set('check_domain', e.target.checked)}
           />
@@ -139,7 +139,7 @@ export function SiteForm({
         <label className="flex items-center gap-2 text-sm text-zinc-300">
           <input
             type="checkbox"
-            className="accent-emerald-500"
+            className="accent-sky-300"
             checked={form.public}
             onChange={(e) => set('public', e.target.checked)}
           />
@@ -189,7 +189,7 @@ export function SiteForm({
           {headers.length < 5 && (
             <button
               type="button"
-              className="btn-ghost px-0 text-emerald-400 hover:bg-transparent"
+              className="btn-ghost px-0 text-brand hover:bg-transparent"
               onClick={() => setHeaders((list) => [...list, { name: '', value: '', saved: false }])}
             >
               + Adicionar cabeçalho
@@ -199,7 +199,7 @@ export function SiteForm({
         <label className="flex items-center gap-2 text-sm text-zinc-300">
           <input
             type="checkbox"
-            className="accent-emerald-500"
+            className="accent-sky-300"
             checked={form.enabled}
             onChange={(e) => set('enabled', e.target.checked)}
           />

@@ -6,7 +6,7 @@ const ORDER: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 
 
 const SEVERITY: Record<Severity, { label: string; className: string }> = {
   critical: { label: 'Crítico', className: 'bg-red-500/15 text-red-300 ring-red-500/30' },
-  high: { label: 'Alto', className: 'bg-orange-500/15 text-orange-300 ring-orange-500/30' },
+  high: { label: 'Alto', className: 'bg-amber-500/15 text-amber-300 ring-amber-500/30' },
   medium: { label: 'Médio', className: 'bg-amber-500/15 text-amber-300 ring-amber-500/30' },
   low: { label: 'Baixo', className: 'bg-zinc-500/15 text-zinc-300 ring-zinc-500/30' },
 };
@@ -95,7 +95,7 @@ export function SecurityPanel({ siteId, onChange }: { siteId: number; onChange: 
       )}
 
       {audit?.at && audit.findings.length === 0 && (
-        <p className="text-sm text-emerald-400">Nenhum problema encontrado. 🛡️</p>
+        <p className="text-sm text-emerald-400">Nenhum problema encontrado.</p>
       )}
 
       {audit && audit.passed.length > 0 && (

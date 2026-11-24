@@ -47,18 +47,19 @@ export function periodLabel(from: number): string {
 type Doc = InstanceType<typeof PDFDocument>;
 
 function logo(doc: Doc, x: number, y: number) {
-  // marca do Uivo (versão para fundo claro), desenhada em vetor a partir dos mesmos traços do painel
-  const scale = 30 / BRAND.height;
+  // marca do Uivo (versão para fundo claro), em vetor, com os mesmos traços do painel
+  const scale = 34 / BRAND.height;
   doc.save().translate(x, y).scale(scale);
-  doc.path(BRAND.moon).lineWidth(2).lineJoin('round').strokeColor(C.text).stroke();
-  doc
-    .path(BRAND.pulse)
-    .lineWidth(2)
-    .lineCap('round')
-    .lineJoin('round')
-    .strokeColor(BRAND.amber.onLight)
-    .stroke();
   doc.path(BRAND.wordmark).fillColor(C.text).fill();
+  BRAND.arcs.forEach((d, i) => {
+    doc
+      .path(d)
+      .lineWidth(2.2)
+      .lineCap('round')
+      .strokeOpacity(BRAND.arcOpacity[i])
+      .strokeColor(BRAND.ice.onLight)
+      .stroke();
+  });
   doc.restore();
 }
 

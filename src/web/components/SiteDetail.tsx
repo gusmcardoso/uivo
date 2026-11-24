@@ -2,30 +2,55 @@ import { useEffect, useRef, useState } from 'react';
 import uPlot from 'uplot';
 import { api, type CheckPoint, type Incident, type Site, type TimingSummary } from '../api.ts';
 import { dateTime, duration, formatUptime } from '../format.ts';
+import { type Hover, MomentTooltip } from './MomentTooltip.tsx';
 import { SecurityPanel } from './SecurityPanel.tsx';
 import { LastCheck, PhaseChart } from './TimingPanel.tsx';
 
+const DAY = 86_400_000;
 const RANGES = [
-  { key: '24h', label: '24 h' },
-  { key: '7d', label: '7 dias' },
-  { key: '30d', label: '30 dias' },
+  { key: '24h', label: '24 h', span: DAY },
+  { key: '7d', label: '7 dias', span: 7 * DAY },
+  { key: '30d', label: '30 dias', span: 30 * DAY },
 ];
+/** Tamanho de cada ponto do gráfico (mesma conta do servidor: até 300 pontos, mínimo 1 minuto). */
+const bucketOf = (range: string) =>
+  Math.max(60_000, Math.ceil((RANGES.find((r) => r.key === range)?.span ?? DAY) / 300));
 
-function ResponseChart({ points }: { points: CheckPoint[] }) {
+function ResponseChart({ points, onHover }: { points: CheckPoint[]; onHover?: (h: Hover | null) => void }) {
   const ref = useRef<HTMLDivElement>(null);
+  const onHoverRef = useRef(onHover);
+  onHoverRef.current = onHover;
 
   useEffect(() => {
     const el = ref.current;
     if (!el || points.length < 2) return;
     const xs = points.map((p) => p.t / 1000);
     const ms = points.map((p) => p.ms);
-    const down = points.map((p) => (p.ok ? null : p.ms));
+    const down = points.map((p) => (p.ok ? null : 0.93));
+    const okMs = points.map((p) => (p.ok ? p.ms : null));
     const plot = new uPlot(
       {
         width: el.clientWidth,
         height: 220,
         cursor: { y: false },
-        scales: { x: { time: true }, y: { range: (_u, _min, max) => [0, Math.max(100, max * 1.15)] } },
+        hooks: {
+          // posição do cursor para o detalhe do ponto (null quando o mouse sai do gráfico)
+          setCursor: [
+            (u) => {
+              const idx = u.cursor.idx;
+              const left = u.cursor.left ?? -1;
+              if (idx == null || left < 0) return onHoverRef.current?.(null);
+              const over = u.over.getBoundingClientRect();
+              const box = el.getBoundingClientRect();
+              onHoverRef.current?.({ idx, x: over.left - box.left + left, width: box.width });
+            },
+          ],
+        },
+        scales: {
+          x: { time: true },
+          y: { range: (_u, _min, max) => [0, Math.max(100, max * 1.15)] },
+          fail: { range: [0, 1] },
+        },
         axes: [
           {
             stroke: '#71717a',
@@ -53,19 +78,20 @@ function ResponseChart({ points }: { points: CheckPoint[] }) {
           {},
           {
             label: 'Resposta',
-            stroke: '#34d399',
+            stroke: '#7dd3fc',
             width: 2,
-            fill: 'rgba(52, 211, 153, 0.12)',
+            fill: 'rgba(125, 211, 252, 0.10)',
             points: { show: false },
           },
           {
             label: 'Falha',
+            scale: 'fail',
             stroke: 'transparent',
-            points: { show: true, size: 7, fill: '#f87171', stroke: '#f87171' },
+            points: { show: true, size: 8, fill: '#f87171', stroke: '#f87171' },
           },
         ],
       },
-      [xs, ms, down],
+      [xs, okMs, down],
       el,
     );
     const resize = new ResizeObserver(() => plot.setSize({ width: el.clientWidth, height: 220 }));
@@ -124,6 +150,7 @@ function Performance({ site }: { site: Site }) {
   const [points, setPoints] = useState<CheckPoint[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [timing, setTiming] = useState<TimingSummary | null>(null);
+  const [hover, setHover] = useState<Hover | null>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: recarrega a cada nova checagem do site
   useEffect(() => {
@@ -141,7 +168,9 @@ function Performance({ site }: { site: Site }) {
       .catch(() => setIncidents([]));
   }, [site.id, range, site.last_checked_at]);
 
-  const avg = points.length ? Math.round(points.reduce((s, p) => s + p.ms, 0) / points.length) : null;
+  // média só das checagens que responderam: uma queda não é "lentidão"
+  const okPoints = points.filter((p) => p.ok);
+  const avg = okPoints.length ? Math.round(okPoints.reduce((s, p) => s + p.ms, 0) / okPoints.length) : null;
 
   return (
     <div className="space-y-5 p-5">
@@ -189,16 +218,30 @@ function Performance({ site }: { site: Site }) {
           ))}
         </div>
       </div>
-      {points.filter((p) => p.wait !== null).length >= 2 ? (
-        <PhaseChart points={points} />
-      ) : (
-        <ResponseChart points={points} />
-      )}
+      <div className="relative">
+        {points.filter((p) => p.wait !== null).length >= 2 ? (
+          <PhaseChart points={points} onHover={setHover} />
+        ) : (
+          <ResponseChart points={points} onHover={setHover} />
+        )}
+        {hover && points[hover.idx] && (
+          <MomentTooltip
+            siteId={site.id}
+            point={points[hover.idx]}
+            hover={hover}
+            bucketMs={bucketOf(range)}
+            longRange={range !== '24h'}
+          />
+        )}
+      </div>
+      <p className="-mt-3 text-xs text-zinc-600">
+        Passe o mouse no gráfico para ver o detalhe de cada momento e comparar com dias anteriores.
+      </p>
       {timing?.last && <LastCheck timing={timing} />}
       <div>
         <h3 className="mb-2 text-sm font-medium text-zinc-300">Incidentes (90 dias)</h3>
         {incidents.length === 0 ? (
-          <p className="text-sm text-zinc-500">Nenhuma queda registrada. 🎉</p>
+          <p className="text-sm text-zinc-500">Nenhuma queda registrada.</p>
         ) : (
           <ul className="divide-y divide-zinc-800 text-sm">
             {incidents.map((i) => (
