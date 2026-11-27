@@ -114,12 +114,12 @@ function Toast({
       >
         <span className="block text-sm font-medium text-zinc-100">{n.title}</span>
         {n.detail && <span className="mt-0.5 block text-xs text-zinc-400">{n.detail}</span>}
-        <span className="mt-1 block text-[11px] text-zinc-600">{l.label} · agora</span>
+        <span className="mt-1 block text-[11px] text-zinc-400">{l.label} · agora</span>
       </button>
       <button
         type="button"
         onClick={onDismiss}
-        className="self-start px-3 py-2.5 text-zinc-500 hover:text-zinc-200"
+        className="self-start px-3 py-2.5 text-zinc-400 hover:text-zinc-200"
         aria-label="Fechar aviso"
       >
         ×
@@ -197,10 +197,10 @@ export function Bell({
         <div className="absolute top-full right-0 z-30 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-md border border-zinc-800 bg-zinc-950/95 shadow-2xl shadow-black/60 backdrop-blur">
           <div className="flex items-center justify-between border-b border-zinc-800/80 px-4 py-3">
             <span className="panel-title">Avisos</span>
-            <span className="text-xs text-zinc-600">últimos {items.length}</span>
+            <span className="text-xs text-zinc-400">últimos {items.length}</span>
           </div>
           {items.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-zinc-500">
+            <p className="px-4 py-6 text-sm text-zinc-400">
               Nenhum aviso ainda. Quando um site cair, ficar instável ou voltar, aparece aqui.
             </p>
           ) : (
@@ -218,8 +218,8 @@ export function Bell({
                     <span className={`mt-1.5 size-2 shrink-0 rounded-[1px] ${LEVEL[n.level].dot}`} />
                     <span className="min-w-0">
                       <span className="block text-sm text-zinc-100">{n.title}</span>
-                      {n.detail && <span className="block truncate text-xs text-zinc-500">{n.detail}</span>}
-                      <span className="block text-[11px] text-zinc-600">{relativeTime(n.at)}</span>
+                      {n.detail && <span className="block truncate text-xs text-zinc-400">{n.detail}</span>}
+                      <span className="block text-[11px] text-zinc-400">{relativeTime(n.at)}</span>
                     </span>
                   </button>
                 </li>

@@ -21,6 +21,7 @@ import { registerPublicRoutes } from './public.ts';
 import { buildReport } from './report/data.ts';
 import { renderReport } from './report/pdf.ts';
 import { DAY, HOUR } from './util.ts';
+import { VERCEL_PROJECT_PATTERN, type VercelClient } from './vercel.ts';
 
 export interface AppOptions {
   db: DatabaseSync;
@@ -32,6 +33,8 @@ export interface AppOptions {
   statusTitle?: string;
   /** Nome de quem prepara os relatórios (aparece na capa). */
   reportAuthor?: string;
+  /** Visitantes pelo Web Analytics da Vercel (sem ele, a aba diz como configurar). */
+  vercel?: VercelClient;
   logger?: boolean;
 }
 
@@ -58,6 +61,8 @@ const siteBody = {
     public: { type: 'boolean' },
     // Cliente (agrupa os sites na lista); vazio tira do grupo
     client: { type: ['string', 'null'], maxLength: 60 },
+    // Projeto na Vercel para os visitantes: "projeto" ou "time/projeto"; vazio desliga
+    vercel_project: { type: ['string', 'null'], maxLength: 166, pattern: `^$|${VERCEL_PROJECT_PATTERN}` },
     // Cabeçalhos de liberação (ex.: segredo do firewall). Valor vazio mantém o já salvo.
     headers: {
       type: 'object',
@@ -87,6 +92,7 @@ interface SiteInput {
   check_domain?: boolean;
   public?: boolean;
   client?: string | null;
+  vercel_project?: string | null;
   headers?: Record<string, string>;
 }
 
@@ -267,6 +273,18 @@ export async function buildApp(options: AppOptions) {
     },
   );
 
+  // ─── Visitantes (Web Analytics da Vercel) ────────────────────────────────────
+  app.get<{ Params: { id: string } }>(
+    '/api/sites/:id/visitors',
+    { preHandler: requireAuth, config: { rateLimit: { max: 30, timeWindow: '1 minute' } } },
+    async (req, reply) => {
+      const site = getSite(db, Number(req.params.id));
+      if (!site) return reply.code(404).send({ error: 'Site não encontrado.' });
+      if (!options.vercel) return { configured: false, reason: 'token' };
+      return options.vercel.visitors(site.vercel_project);
+    },
+  );
+
   // ─── Segurança ────────────────────────────────────────────────────────────
   /** Última auditoria + o motivo, se a mais recente não pôde ser feita (ex.: desafio anti-bot). */
   const securityView = (siteId: number) => ({
@@ -316,8 +334,9 @@ export async function buildApp(options: AppOptions) {
       if (typeof headers === 'string') return reply.code(400).send({ error: headers });
       const result = db
         .prepare(
-          `INSERT INTO sites (name, url, interval_sec, keyword, enabled, check_domain, public, custom_headers, client, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO sites (name, url, interval_sec, keyword, enabled, check_domain, public, custom_headers, client,
+             vercel_project, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           b.name ?? '',
@@ -329,6 +348,7 @@ export async function buildApp(options: AppOptions) {
           b.public ? 1 : 0,
           Object.keys(headers).length ? JSON.stringify(headers) : null,
           cleanClient(b.client),
+          b.vercel_project?.trim() || null,
           Date.now(),
         );
       const id = Number(result.lastInsertRowid);
@@ -350,7 +370,7 @@ export async function buildApp(options: AppOptions) {
       if (typeof headers === 'string') return reply.code(400).send({ error: headers });
       db.prepare(
         `UPDATE sites SET name = ?, url = ?, interval_sec = ?, keyword = ?, enabled = ?, check_domain = ?, public = ?,
-           custom_headers = ?, client = ?
+           custom_headers = ?, client = ?, vercel_project = ?
          ${urlChanged ? ', ssl_checked_at = NULL, domain_checked_at = NULL' : ''} WHERE id = ?`,
       ).run(
         b.name ?? site.name,
@@ -362,6 +382,7 @@ export async function buildApp(options: AppOptions) {
         b.public === undefined ? site.public : Number(b.public),
         Object.keys(headers).length ? JSON.stringify(headers) : null,
         b.client === undefined ? site.client : cleanClient(b.client),
+        b.vercel_project === undefined ? site.vercel_project : b.vercel_project?.trim() || null,
         site.id,
       );
       if (urlChanged) void options.runNow(site.id);

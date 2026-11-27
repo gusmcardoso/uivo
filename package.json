@@ -1,6 +1,6 @@
 {
   "name": "uivo",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Monitor de saúde de sites: disponibilidade, SSL e vencimento de domínio, com alertas no Telegram.",
   "private": true,
   "type": "module",

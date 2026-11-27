@@ -19,7 +19,7 @@ const time = (t: number, withDay: boolean) =>
 
 /** Diferença percentual contra uma referência, em palavras (mais lento = pior). */
 function Delta({ now, ref }: { now: number | null; ref: number | null }) {
-  if (now === null || ref === null || ref <= 0) return <span className="text-zinc-600">sem dados</span>;
+  if (now === null || ref === null || ref <= 0) return <span className="text-zinc-400">sem dados</span>;
   const pct = Math.round(((now - ref) / ref) * 100);
   if (Math.abs(pct) < 5) return <span className="text-zinc-400">{ref} ms · igual</span>;
   const slower = pct > 0;
@@ -90,7 +90,7 @@ export function MomentTooltip({
         <span className="font-medium text-zinc-200">
           {time(point.t, longRange)} – {time(point.t + bucketMs, false)}
         </span>
-        <span className="text-zinc-500">
+        <span className="text-zinc-400">
           {point.n} checage{point.n === 1 ? 'm' : 'ns'}
         </span>
       </div>
@@ -99,10 +99,10 @@ export function MomentTooltip({
         <span className="text-2xl font-semibold tabular-nums text-zinc-100">
           {now === null ? '—' : `${now} ms`}
         </span>
-        <span className="text-zinc-500">resposta média</span>
+        <span className="text-zinc-400">resposta média</span>
       </div>
       {moment && moment.current.min !== null && moment.current.max !== moment.current.min && (
-        <div className="text-zinc-500 tabular-nums">
+        <div className="text-zinc-400 tabular-nums">
           de {moment.current.min} a {moment.current.max} ms
         </div>
       )}
@@ -152,7 +152,7 @@ export function MomentTooltip({
             </Row>
           </>
         ) : (
-          <div className="text-zinc-600">carregando…</div>
+          <div className="text-zinc-400">carregando…</div>
         )}
       </div>
     </div>
@@ -162,7 +162,7 @@ export function MomentTooltip({
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex justify-between gap-2">
-      <span className="shrink-0 text-zinc-500">{label}</span>
+      <span className="shrink-0 text-zinc-400">{label}</span>
       {children}
     </div>
   );

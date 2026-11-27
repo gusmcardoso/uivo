@@ -7,7 +7,7 @@ export const PHASES: { key: Phase; label: string; color: string; tip: string }[]
   {
     key: 'redirect',
     label: 'Redirecionamentos',
-    color: '#71717a',
+    color: '#a1a1aa',
     tip: 'Redirecionamentos custam uma ida e volta cada. Aponte links e anúncios direto para a URL final.',
   },
   {
@@ -42,7 +42,7 @@ export const PHASES: { key: Phase; label: string; color: string; tip: string }[]
   },
 ];
 
-const axisStyle = { stroke: '#71717a', grid: { stroke: '#27272a' }, ticks: { stroke: '#27272a' } };
+const axisStyle = { stroke: '#a1a1aa', grid: { stroke: '#27272a' }, ticks: { stroke: '#27272a' } };
 
 /** Gráfico em camadas: cada faixa é uma etapa, empilhadas até o tempo total. */
 export function PhaseChart({
@@ -186,7 +186,7 @@ export function LastCheck({ timing }: { timing: TimingSummary }) {
   return (
     <div className="space-y-4">
       <div>
-        <div className="mb-1.5 flex justify-between text-xs text-zinc-500">
+        <div className="mb-1.5 flex justify-between text-xs text-zinc-400">
           <span>Última checagem</span>
           <span className="tabular-nums">{t.total} ms no total</span>
         </div>
@@ -228,7 +228,7 @@ export function LastCheck({ timing }: { timing: TimingSummary }) {
         <Detail label="Status" value={last.statusCode === null ? '—' : String(last.statusCode)} />
       </dl>
       {last.finalUrl && last.redirects > 0 && (
-        <p className="truncate text-xs text-zinc-500">URL final: {last.finalUrl}</p>
+        <p className="truncate text-xs text-zinc-400">URL final: {last.finalUrl}</p>
       )}
 
       {tip && (
@@ -246,7 +246,7 @@ export function LastCheck({ timing }: { timing: TimingSummary }) {
 function Detail({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
   return (
     <div>
-      <dt className="text-xs text-zinc-500">{label}</dt>
+      <dt className="text-xs text-zinc-400">{label}</dt>
       <dd className={`font-medium ${warn ? 'text-amber-400' : ''}`}>{value}</dd>
     </div>
   );

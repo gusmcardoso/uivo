@@ -33,6 +33,7 @@ export interface Site {
   domain_checked_at: number | null;
   created_at: number;
   client: string | null;
+  vercel_project: string | null;
 }
 
 const SCHEMA = `
@@ -156,6 +157,8 @@ function migrate(db: DatabaseSync): void {
   if (!columns.has('security_error')) db.exec('ALTER TABLE sites ADD COLUMN security_error TEXT');
   // cliente: agrupa os sites na lista (e no relatório)
   if (!columns.has('client')) db.exec('ALTER TABLE sites ADD COLUMN client TEXT');
+  // v0.2.3: projeto da Vercel de onde vêm os visitantes ("projeto" ou "time/projeto")
+  if (!columns.has('vercel_project')) db.exec('ALTER TABLE sites ADD COLUMN vercel_project TEXT');
   const userColumns = new Set(
     (db.prepare('PRAGMA table_info(users)').all() as { name: string }[]).map((c) => c.name),
   );

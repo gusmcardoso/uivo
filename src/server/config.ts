@@ -26,6 +26,8 @@ export const config = {
   metricsToken: process.env.METRICS_TOKEN || undefined,
   statusTitle: process.env.STATUS_PAGE_TITLE || 'Status dos serviços',
   reportAuthor: process.env.REPORT_AUTHOR || undefined,
+  /** Token da Vercel (só leitura) para mostrar os visitantes dos sites hospedados lá. */
+  vercelToken: process.env.VERCEL_TOKEN || undefined,
 };
 
 export type Config = typeof config;

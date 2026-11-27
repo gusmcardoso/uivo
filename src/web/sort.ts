@@ -61,6 +61,46 @@ export function groupByClient(sites: Site[], mode: SortMode, now = Date.now()): 
     }));
 }
 
+// ─── Busca e filtros da lista ─────────────────────────────────────────────
+
+export interface SiteFilter {
+  /** texto livre: nome, endereço ou cliente (sem diferenciar acento e maiúscula) */
+  query: string;
+  /** situações aceitas (números de severity); vazio = todas */
+  situations: number[];
+  /** clientes aceitos; '' = sem cliente; vazio = todos */
+  clients: string[];
+}
+
+export const EMPTY_FILTER: SiteFilter = { query: '', situations: [], clients: [] };
+
+const fold = (v: string) =>
+  v
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+export const activeFilters = (f: SiteFilter) =>
+  (f.query.trim() ? 1 : 0) + (f.situations.length ? 1 : 0) + (f.clients.length ? 1 : 0);
+
+export function filterSites(sites: Site[], f: SiteFilter, now = Date.now()): Site[] {
+  const q = fold(f.query);
+  return sites.filter((s) => {
+    if (f.situations.length && !f.situations.includes(severity(s, now))) return false;
+    if (f.clients.length && !f.clients.includes(s.client?.trim() ?? '')) return false;
+    if (!q) return true;
+    return [s.name, s.url.replace(/^https?:\/\//, ''), s.client ?? ''].some((v) => fold(v).includes(q));
+  });
+}
+
+/** Quantos sites há em cada situação (para os contadores dos filtros). */
+export function countBySeverity(sites: Site[], now = Date.now()): number[] {
+  const out = [0, 0, 0, 0, 0];
+  for (const s of sites) out[severity(s, now)]++;
+  return out;
+}
+
 /** Clientes já usados (para sugerir no formulário e filtrar o relatório). */
 export const clientsOf = (sites: Site[]) =>
   [...new Set(sites.map((s) => s.client?.trim()).filter((c): c is string => Boolean(c)))].sort((a, b) =>

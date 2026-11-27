@@ -65,7 +65,7 @@ export function BadgePanel({ site, onChange }: { site: Site; onChange: () => voi
               type="button"
               aria-pressed={theme === t}
               onClick={() => setTheme(t)}
-              className={`flex-1 rounded-[2px] px-3 py-1 text-xs ${theme === t ? 'bg-brand/15 text-brand' : 'text-zinc-500 hover:text-zinc-200'}`}
+              className={`flex-1 rounded-[2px] px-3 py-1 text-xs ${theme === t ? 'bg-brand/15 text-brand' : 'text-zinc-400 hover:text-zinc-200'}`}
             >
               {t === 'escuro' ? 'Para fundo escuro' : 'Para fundo claro'}
             </button>
@@ -87,7 +87,7 @@ export function BadgePanel({ site, onChange }: { site: Site; onChange: () => voi
         <pre className="overflow-x-auto rounded-sm border border-zinc-800 bg-zinc-950/80 p-3 text-xs leading-relaxed text-zinc-300">
           {code}
         </pre>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-zinc-400">
           Funciona em qualquer site (HTML, WordPress, React…). Se o site deixar de ser público, o selo para de
           aparecer.
         </p>

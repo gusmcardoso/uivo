@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { Site } from '../src/web/api.ts';
-import { clientsOf, groupByClient, severity, sortSites } from '../src/web/sort.ts';
+import {
+  activeFilters,
+  clientsOf,
+  countBySeverity,
+  EMPTY_FILTER,
+  filterSites,
+  groupByClient,
+  severity,
+  sortSites,
+} from '../src/web/sort.ts';
 
 const NOW = Date.UTC(2026, 10, 24);
 const DAY = 86_400_000;
@@ -83,5 +92,46 @@ describe('ordem e grupos da lista de sites', () => {
       ]),
       ['a', 'B'],
     );
+  });
+});
+
+describe('busca e filtros da lista', () => {
+  const list = [
+    site('Blog da Clínica', { url: 'https://clinica.com.br', client: 'Saúde Viva' }),
+    site('Loja', { url: 'https://loja.com.br', client: 'Rede X', status: 'down' }),
+    site('Agenda', {
+      url: 'https://agenda.saude.com.br',
+      client: 'Saúde Viva',
+      ssl_expires_at: NOW + 3 * DAY,
+    }),
+    site('Antigo', { url: 'https://promo.com.br', enabled: 0 }),
+  ];
+  const names = (f: Partial<typeof EMPTY_FILTER>) =>
+    filterSites(list, { ...EMPTY_FILTER, ...f }, NOW).map((s) => s.name);
+
+  it('sem filtro, mostra tudo', () => {
+    assert.equal(names({}).length, 4);
+    assert.equal(activeFilters(EMPTY_FILTER), 0);
+  });
+
+  it('busca por nome, endereço ou cliente, sem diferenciar acento e maiúscula', () => {
+    assert.deepEqual(names({ query: 'CLINICA' }), ['Blog da Clínica']);
+    assert.deepEqual(names({ query: 'agenda.saude' }), ['Agenda']);
+    assert.deepEqual(names({ query: 'saude viva' }), ['Blog da Clínica', 'Agenda']);
+    assert.deepEqual(names({ query: 'https' }), [], 'o protocolo do endereço não conta');
+    assert.deepEqual(names({ query: '   ' }).length, 4);
+  });
+
+  it('filtra por situação e por cliente (inclusive sem cliente), e combina com a busca', () => {
+    assert.deepEqual(names({ situations: [0, 1] }), ['Loja', 'Agenda']);
+    assert.deepEqual(names({ situations: [4] }), ['Antigo']);
+    assert.deepEqual(names({ clients: [''] }), ['Antigo']);
+    assert.deepEqual(names({ clients: ['Saúde Viva'], situations: [1] }), ['Agenda']);
+    assert.deepEqual(names({ clients: ['Saúde Viva'], query: 'blog' }), ['Blog da Clínica']);
+    assert.equal(activeFilters({ query: 'x', situations: [1], clients: ['a'] }), 3);
+  });
+
+  it('conta os sites de cada situação', () => {
+    assert.deepEqual(countBySeverity(list, NOW), [1, 1, 1, 0, 1]);
   });
 });

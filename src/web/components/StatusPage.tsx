@@ -44,12 +44,12 @@ export function StatusPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
       <PixelBackground />
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-zinc-400">
         <span className="text-brand">$</span> uivo status --público<span className="cursor-blink">_</span>
       </p>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-100">{data?.title ?? 'Status'}</h1>
       {data && (
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-zinc-400">
           Atualizado às{' '}
           {new Date(data.updatedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
         </p>
@@ -86,13 +86,13 @@ export function StatusPage() {
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <h2 className="truncate font-medium text-zinc-100">{s.name}</h2>
-                  <p className="truncate text-xs text-zinc-500">{s.host}</p>
+                  <p className="truncate text-xs text-zinc-400">{s.host}</p>
                 </div>
                 <div className="text-right text-sm">
                   <div className={s.status === 'down' ? 'font-medium text-red-400' : 'text-emerald-400'}>
                     {s.status === 'down' ? 'Fora do ar' : s.status === 'up' ? 'Operacional' : 'Verificando'}
                   </div>
-                  <div className="text-xs text-zinc-500 tabular-nums">
+                  <div className="text-xs text-zinc-400 tabular-nums">
                     {s.downSince
                       ? `há ${duration(Date.now() - s.downSince)}`
                       : `${formatUptime(s.uptime)} em ${data.days} dias`}
@@ -113,7 +113,7 @@ export function StatusPage() {
                   />
                 ))}
               </div>
-              <div className="mt-1.5 flex justify-between text-[11px] text-zinc-600">
+              <div className="mt-1.5 flex justify-between text-[11px] text-zinc-400">
                 <span>{data.days} dias atrás</span>
                 <span>hoje</span>
               </div>
@@ -122,7 +122,7 @@ export function StatusPage() {
         </section>
       )}
 
-      <div className="mt-12 flex items-center justify-center gap-2 text-[11px] text-zinc-500">
+      <div className="mt-12 flex items-center justify-center gap-2 text-[11px] text-zinc-400">
         monitorado com
         <a
           href="https://github.com/gusmcardoso/uivo"

@@ -6,6 +6,7 @@ import { hashPassword } from './auth.ts';
 import { config } from './config.ts';
 import { adoptLegacyDb, openDb } from './db.ts';
 import { startScheduler } from './monitor.ts';
+import { vercelClient } from './vercel.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const adoptedLegacyDb = adoptLegacyDb(config.dataDir);
@@ -34,6 +35,7 @@ const app = await buildApp({
   metricsToken: config.metricsToken,
   statusTitle: config.statusTitle,
   reportAuthor: config.reportAuthor,
+  vercel: vercelClient({ token: config.vercelToken }),
   logger: true,
 });
 

@@ -19,9 +19,19 @@ import { ReportDialog } from './components/ReportDialog.tsx';
 import { scoreTone } from './components/SecurityPanel.tsx';
 import { SiteDetail } from './components/SiteDetail.tsx';
 import { SiteForm } from './components/SiteForm.tsx';
+import { SiteToolbar } from './components/SiteToolbar.tsx';
 import { StatusPage } from './components/StatusPage.tsx';
 import { daysUntil, expiryTone, formatUptime, hostOf, relativeTime } from './format.ts';
-import { clientsOf, groupByClient, type SortMode, sortSites } from './sort.ts';
+import {
+  clientsOf,
+  EMPTY_FILTER,
+  filterSites,
+  groupByClient,
+  type SiteFilter,
+  type SortMode,
+  severity,
+  sortSites,
+} from './sort.ts';
 
 type Session = 'loading' | 'setup' | 'login' | 'in';
 
@@ -80,7 +90,7 @@ export const TONES = {
   ok: 'text-emerald-400',
   warn: 'text-amber-400',
   bad: 'text-red-400',
-  none: 'text-zinc-500',
+  none: 'text-zinc-400',
 };
 
 function Dashboard({ onLogout }: { onLogout: () => void }) {
@@ -95,6 +105,8 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
     pref('uivo.ordem') === 'nome' ? 'nome' : 'situacao',
   );
   const [grouped, setGrouped] = useState(() => pref('uivo.agrupar') === '1');
+  // busca e filtros não ficam salvos: ao voltar ao painel, a lista aparece inteira
+  const [filter, setFilter] = useState<SiteFilter>(EMPTY_FILTER);
   const notes = useNotifications(onLogout);
 
   const load = useCallback(async () => {
@@ -149,8 +161,9 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   const list = sites ?? [];
   const bySite = new Map((overview?.sites ?? []).map((o) => [o.id, o]));
   const current = siteId === null ? null : (list.find((s) => s.id === siteId) ?? null);
-  const ordered = sortSites(list, sortMode);
-  const groups = grouped ? groupByClient(list, sortMode) : null;
+  const visible = filterSites(list, filter);
+  const ordered = sortSites(visible, sortMode);
+  const groups = grouped && visible.length ? groupByClient(visible, sortMode) : null;
   // um aviso novo (queda, volta…) atualiza a lista na hora, sem esperar os 30 s
   const lastToast = notes.toasts[notes.toasts.length - 1]?.id;
   // biome-ignore lint/correctness/useExhaustiveDependencies: recarrega quando chega aviso novo
@@ -231,7 +244,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           ) : (
             <div className="card grid place-items-center gap-3 p-12 text-center">
               <p className="text-zinc-300">Site não encontrado.</p>
-              <p className="text-sm text-zinc-500">Ele pode ter sido removido.</p>
+              <p className="text-sm text-zinc-400">Ele pode ter sido removido.</p>
               <button type="button" className="btn mt-2" onClick={() => navigate(null)}>
                 ← Voltar para todos os sites
               </button>
@@ -242,7 +255,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
             <p className="text-sm text-zinc-300">
               $ uivo status<span className="cursor-blink">_</span>
             </p>
-            <p className="max-w-sm text-sm text-zinc-500">
+            <p className="max-w-sm text-sm text-zinc-400">
               Nenhum site monitorado ainda. Cadastre um endereço e o Uivo passa a checar disponibilidade,
               tempo de resposta, SSL, domínio e segurança.
             </p>
@@ -255,46 +268,32 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         )}
 
         {siteId === null && list.length > 0 && (
-          <section className="card mt-4 overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/80 px-4 py-2.5">
-              <span className="panel-title">
-                Sites <span className="text-zinc-600">{list.length}</span>
-              </span>
-              <div className="flex items-center gap-2">
-                <div className="flex rounded-sm border border-zinc-800 p-0.5" title="Ordem da lista">
-                  {(
-                    [
-                      ['situacao', 'Situação'],
-                      ['nome', 'Nome'],
-                    ] as const
-                  ).map(([key, label]) => (
-                    <button
-                      key={key}
-                      type="button"
-                      aria-pressed={sortMode === key}
-                      onClick={() => {
-                        setSortMode(key);
-                        savePref('uivo.ordem', key);
-                      }}
-                      className={`rounded-[2px] px-2.5 py-1 text-xs ${sortMode === key ? 'bg-brand/15 text-brand' : 'text-zinc-500 hover:text-zinc-200'}`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  aria-pressed={grouped}
-                  onClick={() => {
-                    setGrouped(!grouped);
-                    savePref('uivo.agrupar', grouped ? '0' : '1');
-                  }}
-                  className={`rounded-sm border px-2.5 py-1 text-xs transition-colors ${grouped ? 'border-brand/50 bg-brand/10 text-brand' : 'border-zinc-800 text-zinc-500 hover:text-zinc-200'}`}
-                >
-                  Agrupar por cliente
+          <section className="card mt-4">
+            <SiteToolbar
+              sites={list}
+              shown={visible.length}
+              filter={filter}
+              onFilter={setFilter}
+              sortMode={sortMode}
+              onSort={(key) => {
+                setSortMode(key);
+                savePref('uivo.ordem', key);
+              }}
+              grouped={grouped}
+              onGroup={(g) => {
+                setGrouped(g);
+                savePref('uivo.agrupar', g ? '1' : '0');
+              }}
+            />
+            {visible.length === 0 && (
+              <div className="grid place-items-center gap-2 px-4 py-10 text-center">
+                <p className="text-sm text-zinc-200">Nenhum site encontrado.</p>
+                <p className="text-xs text-zinc-400">Tente outra busca ou tire algum filtro.</p>
+                <button type="button" className="btn mt-1 text-xs" onClick={() => setFilter(EMPTY_FILTER)}>
+                  Limpar busca e filtros
                 </button>
               </div>
-            </div>
+            )}
             <div className="hidden grid-cols-[minmax(0,1fr)_10rem_4.5rem_6rem_3.5rem_4rem_4rem_6.5rem] items-center gap-4 border-b border-zinc-800/60 px-4 py-2 md:grid">
               <span className="label-xs">Site</span>
               <span className="label-xs">Últimas 24 h</span>
@@ -312,7 +311,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
                 <div key={g.client ?? '\u0000'}>
                   <div className="flex items-center gap-3 border-b border-zinc-800/60 bg-zinc-900/40 px-4 py-2">
                     <span className="text-sm font-medium text-zinc-200">{g.client ?? 'Sem cliente'}</span>
-                    <span className="text-xs text-zinc-600">
+                    <span className="text-xs text-zinc-400">
                       {g.sites.length} site{g.sites.length === 1 ? '' : 's'}
                     </span>
                     {g.down > 0 && <span className="text-xs text-red-400">{g.down} fora do ar</span>}
@@ -458,12 +457,12 @@ function Summary({
   return (
     <section className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
       <div className="card p-5">
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-zinc-400">
           <span className="text-brand">$</span> uivo status<span className="cursor-blink">_</span>
         </p>
         <p className="mt-3 text-3xl font-semibold tracking-tight text-zinc-100">
           <span className={up === 0 && active.length ? 'text-red-400' : 'text-emerald-400'}>{up}</span>
-          <span className="text-zinc-600"> / </span>
+          <span className="text-zinc-500"> / </span>
           {active.length} <span className="text-lg font-normal text-zinc-400">sites no ar</span>
         </p>
         {down.length > 0 ? (
@@ -473,7 +472,7 @@ function Summary({
                 <button type="button" className="text-red-300 hover:underline" onClick={() => onOpen(s.id)}>
                   ✕ {s.name}
                 </button>
-                <span className="text-zinc-500"> · {s.last_error ?? 'sem resposta'}</span>
+                <span className="text-zinc-400"> · {s.last_error ?? 'sem resposta'}</span>
               </li>
             ))}
           </ul>
@@ -516,7 +515,7 @@ function Summary({
         {attention.length === 0 ? (
           <div className="flex flex-1 flex-col items-start justify-center gap-1 px-5 py-6">
             <span className="text-sm text-emerald-400">Tudo em ordem.</span>
-            <span className="text-xs text-zinc-500">
+            <span className="text-xs text-zinc-400">
               Nada pedindo atenção agora. Pode tomar o café em paz.
             </span>
           </div>
@@ -534,9 +533,9 @@ function Summary({
                   />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm text-zinc-100">{a.site.name}</span>
-                    <span className="block truncate text-xs text-zinc-500">{a.text}</span>
+                    <span className="block truncate text-xs text-zinc-400">{a.text}</span>
                   </span>
-                  <span className="text-xs text-zinc-600 transition-colors group-hover:text-zinc-300">
+                  <span className="text-xs text-zinc-400 transition-colors group-hover:text-zinc-300">
                     abrir ›
                   </span>
                 </button>
@@ -572,7 +571,7 @@ function Stat({
 
 /** Variação contra ontem: mais lento é pior. */
 function Trend({ change, compact = false }: { change: number; compact?: boolean }) {
-  if (Math.abs(change) < 5) return compact ? null : <span className="text-xs text-zinc-500">= ontem</span>;
+  if (Math.abs(change) < 5) return compact ? null : <span className="text-xs text-zinc-400">= ontem</span>;
   return (
     <span
       className={`text-xs ${change > 0 ? 'text-amber-400' : 'text-emerald-400'}`}
@@ -643,9 +642,17 @@ function SiteRow({
   onRemove: () => void;
 }) {
   const status = statusOf(site);
+  // destaque do que é crítico: faixa vermelha (fora do ar) ou âmbar (pedindo atenção) na borda
+  const level = severity(site);
+  const mark =
+    level === 0
+      ? 'bg-red-500/[0.06] shadow-[inset_2px_0_0_#ef4444]'
+      : level === 1
+        ? 'shadow-[inset_2px_0_0_#fbbf24]'
+        : '';
   return (
     <div
-      className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2.5 px-4 py-3 transition-colors md:grid-cols-[minmax(0,1fr)_10rem_4.5rem_6rem_3.5rem_4rem_4rem_6.5rem] group hover:bg-zinc-900/40`}
+      className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2.5 px-4 py-3 transition-colors md:grid-cols-[minmax(0,1fr)_10rem_4.5rem_6rem_3.5rem_4rem_4rem_6.5rem] group hover:bg-zinc-900/40 ${mark}`}
     >
       <a
         href={`/sites/${site.id}`}
@@ -660,14 +667,14 @@ function SiteRow({
         <StatusDot status={status} />
         <div className="min-w-0">
           <div className="truncate font-medium text-zinc-100">{site.name}</div>
-          <div className="truncate text-[11px] text-zinc-500">
+          <div className="truncate text-[11px] text-zinc-400">
             {hostOf(site.url)} · {site.enabled ? relativeTime(site.last_checked_at) : 'pausado'}
             {site.status === 'down' && site.last_error ? (
               <span className="text-red-400"> · {site.last_error}</span>
             ) : null}
           </div>
         </div>
-        <span className="text-zinc-700 transition-colors group-hover:text-zinc-300">
+        <span className="text-zinc-600 transition-colors group-hover:text-zinc-300">
           <IconChevron open={false} />
         </span>
       </a>
@@ -770,7 +777,7 @@ function SitePage({
           e.preventDefault();
           onBack();
         }}
-        className="inline-flex items-center gap-1.5 text-sm text-zinc-500 transition-colors hover:text-zinc-200"
+        className="inline-flex items-center gap-1.5 text-sm text-zinc-400 transition-colors hover:text-zinc-200"
       >
         ← Todos os sites
       </a>
@@ -785,11 +792,11 @@ function SitePage({
               href={site.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-1 inline-block truncate text-sm text-zinc-500 hover:text-brand"
+              className="mt-1 inline-block truncate text-sm text-zinc-400 hover:text-brand"
             >
               {site.url} ↗
             </a>
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 text-xs text-zinc-400">
               {site.enabled ? `verificado ${relativeTime(site.last_checked_at)}` : 'monitoramento pausado'}
               {site.status === 'down' && site.last_error ? (
                 <span className="text-red-400"> · fora do ar: {site.last_error}</span>
@@ -928,7 +935,7 @@ function Expiry({
   const tone = expiryTone(days, warn);
   return (
     <Cell label={label} title={title} always={always}>
-      <span className={tone === 'none' ? 'text-zinc-500' : tone === 'ok' ? 'text-zinc-300' : TONES[tone]}>
+      <span className={tone === 'none' ? 'text-zinc-400' : tone === 'ok' ? 'text-zinc-300' : TONES[tone]}>
         {days === null ? '—' : days < 0 ? 'vencido' : `${days} d`}
       </span>
     </Cell>

@@ -25,6 +25,7 @@ services:
       METRICS_TOKEN: ${METRICS_TOKEN:-}
       STATUS_PAGE_TITLE: ${STATUS_PAGE_TITLE:-}
       REPORT_AUTHOR: ${REPORT_AUTHOR:-}
+      VERCEL_TOKEN: ${VERCEL_TOKEN:-}
       TZ: ${TZ:-America/Sao_Paulo}
     volumes:
       - uivo-data:/data

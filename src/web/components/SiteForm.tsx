@@ -30,6 +30,7 @@ export function SiteForm({
     check_domain: site ? Boolean(site.check_domain) : true,
     public: site ? Boolean(site.public) : false,
     client: site?.client ?? '',
+    vercel_project: site?.vercel_project ?? '',
   });
   // Cabeçalhos de liberação: os valores salvos nunca voltam do servidor (só os nomes);
   // valor em branco num nome já salvo mantém o segredo.
@@ -57,6 +58,7 @@ export function SiteForm({
       url: form.url.trim(),
       keyword: form.keyword?.trim() || null,
       client: form.client?.trim() || null,
+      vercel_project: form.vercel_project?.trim() || null,
       headers: Object.fromEntries(headers.filter((h) => h.name.trim()).map((h) => [h.name.trim(), h.value])),
     };
     try {
@@ -78,7 +80,7 @@ export function SiteForm({
       <form
         onSubmit={submit}
         onMouseDown={(e) => e.stopPropagation()}
-        className="card w-full max-w-md space-y-4 bg-zinc-900 p-6"
+        className="card max-h-[92vh] w-full max-w-md space-y-4 overflow-y-auto bg-zinc-900 p-6"
       >
         <h2 className="text-lg font-semibold">{site ? 'Editar site' : 'Novo site'}</h2>
         <label className="block space-y-1.5 text-sm">
@@ -144,7 +146,7 @@ export function SiteForm({
             />
           </label>
         </div>
-        <p className="-mt-1 text-xs text-zinc-500">
+        <p className="-mt-1 text-xs text-zinc-400">
           Com palavra-chave, o site só conta como no ar se o texto aparecer na página (detecta página em
           branco ou erro com 200).
         </p>
@@ -166,9 +168,25 @@ export function SiteForm({
           />
           Mostrar na página de status pública
         </label>
+        <label className="block space-y-1.5 text-sm">
+          <span className="label-xs">Projeto na Vercel (opcional)</span>
+          <input
+            className="input"
+            maxLength={166}
+            pattern="([A-Za-z0-9_\-]{1,64}/)?[A-Za-z0-9][A-Za-z0-9._\-]{0,99}"
+            title="nome-do-projeto ou time/nome-do-projeto"
+            value={form.vercel_project ?? ''}
+            onChange={(e) => set('vercel_project', e.target.value)}
+            placeholder="portfolio ou meu-time/portfolio"
+          />
+          <span className="block text-xs text-zinc-400">
+            Mostra os visitantes por dia e por mês (aba Visitantes). Precisa do Web Analytics ligado no
+            projeto e do VERCEL_TOKEN no servidor.
+          </span>
+        </label>
         <fieldset className="space-y-2">
           <legend className="text-sm text-zinc-300">Cabeçalhos de liberação (opcional)</legend>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-zinc-400">
             Para sites atrás de firewall com desafio anti-bot: o Uivo envia o cabeçalho e o firewall libera
             quem o tiver. Os valores ficam só no servidor e não são exibidos de novo.
           </p>

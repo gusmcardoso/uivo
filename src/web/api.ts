@@ -16,6 +16,8 @@ export interface Site {
   custom_header_names: string[];
   /** cliente (agrupa os sites na lista) */
   client: string | null;
+  /** projeto da Vercel para os visitantes ("projeto" ou "time/projeto") */
+  vercel_project: string | null;
   health_score: number | null;
   status: Status;
   last_checked_at: number | null;
@@ -40,6 +42,7 @@ export interface SitePayload {
   check_domain: boolean;
   public: boolean;
   client?: string | null;
+  vercel_project?: string | null;
   /** Valor vazio mantém o segredo já salvo. */
   headers?: Record<string, string>;
 }
@@ -117,6 +120,19 @@ export interface AppNotification {
   title: string;
   detail: string | null;
 }
+
+export type Visitors =
+  | { configured: false; reason: 'token' | 'project' }
+  | { configured: true; error: string }
+  | {
+      configured: true;
+      error: null;
+      days: { date: string; visitors: number; pageviews: number }[];
+      thisMonth: { visitors: number; pageviews: number };
+      months: { month: string; visitors: number; pageviews: number }[];
+      monthsLimited: boolean;
+      fetchedAt: number;
+    };
 
 export interface Incident {
   id: number;
@@ -200,6 +216,7 @@ export const api = {
   timing: (id: number, range: string) =>
     request<TimingSummary>('GET', `/api/sites/${id}/timing?range=${range}`),
   incidents: (id: number) => request<Incident[]>('GET', `/api/sites/${id}/incidents`),
+  visitors: (id: number) => request<Visitors>('GET', `/api/sites/${id}/visitors`),
   moment: (id: number, at: number, span: number) =>
     request<Moment>('GET', `/api/sites/${id}/moment?at=${at}&span=${span}`),
 };

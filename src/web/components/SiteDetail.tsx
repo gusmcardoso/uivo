@@ -6,6 +6,7 @@ import { BadgePanel } from './BadgePanel.tsx';
 import { type Hover, MomentTooltip } from './MomentTooltip.tsx';
 import { SecurityPanel } from './SecurityPanel.tsx';
 import { LastCheck, PhaseChart } from './TimingPanel.tsx';
+import { VisitorsPanel } from './VisitorsPanel.tsx';
 
 const DAY = 86_400_000;
 const RANGES = [
@@ -54,7 +55,7 @@ function ResponseChart({ points, onHover }: { points: CheckPoint[]; onHover?: (h
         },
         axes: [
           {
-            stroke: '#71717a',
+            stroke: '#a1a1aa',
             grid: { stroke: '#27272a' },
             ticks: { stroke: '#27272a' },
             values: (_u, splits) => {
@@ -68,7 +69,7 @@ function ResponseChart({ points, onHover }: { points: CheckPoint[]; onHover?: (h
             },
           },
           {
-            stroke: '#71717a',
+            stroke: '#a1a1aa',
             grid: { stroke: '#27272a' },
             ticks: { stroke: '#27272a' },
             values: (_u, v) => v.map((n) => `${n} ms`),
@@ -105,7 +106,7 @@ function ResponseChart({ points, onHover }: { points: CheckPoint[]; onHover?: (h
 
   if (points.length < 2)
     return (
-      <p className="grid h-[220px] place-items-center text-sm text-zinc-500">
+      <p className="grid h-[220px] place-items-center text-sm text-zinc-400">
         {points.length === 0
           ? 'Ainda sem checagens neste período.'
           : 'Coletando dados: o gráfico aparece em alguns minutos.'}
@@ -115,32 +116,40 @@ function ResponseChart({ points, onHover }: { points: CheckPoint[]; onHover?: (h
 }
 
 export function SiteDetail({ site, onChange }: { site: Site; onChange: () => void }) {
-  const [tab, setTab] = useState<'perf' | 'security' | 'badge'>('perf');
+  const [tab, setTab] = useState<'perf' | 'security' | 'visitors' | 'badge'>('perf');
+  // a aba de visitantes só aparece para sites ligados a um projeto da Vercel
+  const tabs = (
+    [
+      ['perf', 'Desempenho'],
+      ['security', 'Segurança'],
+      ['visitors', 'Visitantes'],
+      ['badge', 'Selo'],
+    ] as const
+  ).filter(([key]) => key !== 'visitors' || site.vercel_project);
+  const current = tab === 'visitors' && !site.vercel_project ? 'perf' : tab;
   return (
     <div>
-      <div className="flex gap-1 border-b border-zinc-800/80 px-5 pt-2">
-        {(
-          [
-            ['perf', 'Desempenho'],
-            ['security', 'Segurança'],
-            ['badge', 'Selo'],
-          ] as const
-        ).map(([key, label]) => (
+      <div className="flex gap-1 overflow-x-auto border-b border-zinc-800/80 px-5 pt-2">
+        {tabs.map(([key, label]) => (
           <button
             key={key}
             type="button"
             onClick={() => setTab(key)}
-            className={`border-b-2 px-3 py-2 text-sm ${tab === key ? 'border-brand text-zinc-100' : 'border-transparent text-zinc-500 hover:text-zinc-200'}`}
+            className={`shrink-0 border-b-2 px-3 py-2 text-sm ${current === key ? 'border-brand text-zinc-100' : 'border-transparent text-zinc-400 hover:text-zinc-200'}`}
           >
             {label}
           </button>
         ))}
       </div>
-      {tab === 'perf' ? (
+      {current === 'perf' ? (
         <Performance site={site} />
-      ) : tab === 'security' ? (
+      ) : current === 'security' ? (
         <div className="p-5">
           <SecurityPanel siteId={site.id} onChange={onChange} />
+        </div>
+      ) : current === 'visitors' ? (
+        <div className="p-5">
+          <VisitorsPanel site={site} />
         </div>
       ) : (
         <div className="p-5">
@@ -217,7 +226,7 @@ function Performance({ site }: { site: Site }) {
               key={r.key}
               type="button"
               onClick={() => setRange(r.key)}
-              className={`rounded-[2px] px-3 py-1 text-xs ${range === r.key ? 'bg-brand/15 text-brand' : 'text-zinc-500 hover:text-zinc-200'}`}
+              className={`rounded-[2px] px-3 py-1 text-xs ${range === r.key ? 'bg-brand/15 text-brand' : 'text-zinc-400 hover:text-zinc-200'}`}
             >
               {r.label}
             </button>
@@ -240,14 +249,14 @@ function Performance({ site }: { site: Site }) {
           />
         )}
       </div>
-      <p className="-mt-3 text-xs text-zinc-600">
+      <p className="-mt-3 text-xs text-zinc-400">
         Passe o mouse no gráfico para ver o detalhe de cada momento e comparar com dias anteriores.
       </p>
       {timing?.last && <LastCheck timing={timing} />}
       <div>
         <h3 className="panel-title mb-2">Quedas (90 dias)</h3>
         {incidents.length === 0 ? (
-          <p className="text-sm text-zinc-500">Nenhuma queda registrada.</p>
+          <p className="text-sm text-zinc-400">Nenhuma queda registrada.</p>
         ) : (
           <ul className="divide-y divide-zinc-800 text-sm">
             {incidents.map((i) => (
@@ -270,7 +279,7 @@ function Performance({ site }: { site: Site }) {
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div title={hint}>
-      <div className="text-xs text-zinc-500">{label}</div>
+      <div className="text-xs text-zinc-400">{label}</div>
       <div className="font-semibold tabular-nums">{value}</div>
     </div>
   );

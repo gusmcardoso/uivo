@@ -42,7 +42,9 @@ Monitores tradicionais perguntam só *"o servidor respondeu?"*. O problema de qu
 | Painel | Estado agora, o que pede atenção, as últimas 24 h de cada site hora a hora e a variação da resposta contra ontem |
 | **Página de cada site** | Endereço próprio (`/sites/:id`): o voltar do navegador e o F5 funcionam e dá para mandar o link |
 | **Avisos no painel** | Popup no canto inferior direito quando um site cai, fica instável, volta ou tem certificado/domínio perto de vencer (queda fica até ser fechada), e central de avisos no sino; os avisos ficam guardados por 90 dias |
+| **Busca e filtros** | Busca por nome, endereço ou cliente (atalho `/`, sem diferenciar acento) e filtros por situação e cliente; o que está fora do ar ou pedindo atenção fica no topo e marcado na lista (v0.2.3) |
 | **Clientes** | Cada site pode ter um cliente: a lista agrupa por cliente, ordena por situação (o que está quebrado primeiro) ou por nome, e o relatório seleciona os sites de um cliente com um clique |
+| **Visitantes (Vercel)** | Para sites hospedados na Vercel: visitantes de hoje, de ontem, dos últimos 7 dias e do mês, com gráfico por dia e por mês, puxados do Web Analytics pela API oficial; o token fica só no servidor (v0.2.3) |
 | **Selo "monitorado com uivo"** | Para o rodapé dos seus sites: status ao vivo e uptime de 30 dias, versões para fundo escuro e claro; só para sites públicos |
 | **Detalhe de cada momento** | Passe o mouse no gráfico: resposta média, mínima e máxima, etapas, falhas e o motivo, comparados com o mesmo horário **ontem**, **há 7 dias** e o **normal daquele horário** (média dos 7 dias anteriores) (v0.2.0) |
 | Alertas | Telegram: queda, volta (com duração) e vencimentos, sem repetir aviso |
@@ -104,6 +106,7 @@ Abra `http://localhost:3000` e crie a conta de administrador no primeiro acesso.
 | `CHECK_CONCURRENCY` | não | Checagens simultâneas (padrão 10) |
 | `STATUS_PAGE_TITLE` | não | Título da página de status pública (padrão "Status dos serviços") |
 | `METRICS_TOKEN` | não | Habilita o `/metrics` para o Prometheus (sem ele, o endpoint fica desligado) |
+| `VERCEL_TOKEN` | não | Token da Vercel para a aba **Visitantes**; em cada site, informe o projeto como `projeto` ou `time/projeto` (o Web Analytics precisa estar ligado no projeto) |
 
 ### Sites atrás de firewall (desafio anti-bot)
 
@@ -237,6 +240,7 @@ npm run lint && npm run typecheck
 - [x] **v0.1.1**: página de status pública e `/metrics` para Prometheus/Grafana
 - [x] **v0.1.2**: auditoria de segurança, detecção de adulteração, nota de saúde e eventos para o Loki
 - [x] **v0.1.3**: tempo por etapa (DNS, conexão, TLS, servidor, download), percentis e diagnóstico
+- [x] **v0.2.3**: busca e filtros na lista (situação, cliente, ordem e agrupamento), destaque do que é crítico, visitantes por dia e por mês do Web Analytics da Vercel, textos com mais contraste
 - [x] **v0.2.2**: avisos no painel (popup e sino), ordenar por situação, agrupar por cliente, selo com "100%"
 - [x] **v0.2.1**: painel em estilo terminal com fundo de pixels, o que pede atenção e as últimas 24 h de cada site, página própria por site, selo "monitorado com uivo", aba Segurança e relatório em PDF refeitos
 - [x] **v0.2.0**: painel redesenhado, detalhe de cada ponto do gráfico comparado com dias anteriores, novo nome (**Uptrue → Uivo**) e nova marca; banco, backups e painéis antigos continuam valendo (o `uptrue.db` é adotado sozinho; veja [migração do servidor](docs/DEPLOY.md#7-migração-de-uma-instalação-uptrue)); `update.sh` faz rollback se a versão nova subir sem os dados

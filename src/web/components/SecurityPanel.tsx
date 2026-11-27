@@ -12,7 +12,7 @@ const SEVERITY: Record<Severity, { label: string; text: string; bar: string; hin
 };
 
 export function scoreTone(score: number | null): string {
-  if (score === null) return 'text-zinc-500';
+  if (score === null) return 'text-zinc-400';
   if (score >= 90) return 'text-emerald-400';
   if (score >= 70) return 'text-amber-400';
   return 'text-red-400';
@@ -96,7 +96,7 @@ export function SecurityPanel({ siteId, onChange }: { siteId: number; onChange: 
             <div className={`text-sm font-medium ${scoreTone(audit?.score ?? null)}`}>
               {verdict(audit?.score ?? null)}
             </div>
-            <div className="mt-0.5 text-[11px] text-zinc-500">
+            <div className="mt-0.5 text-[11px] text-zinc-400">
               {audit?.at ? `auditado ${relativeTime(audit.at)}` : 'sem auditoria'}
             </div>
           </div>
@@ -105,7 +105,7 @@ export function SecurityPanel({ siteId, onChange }: { siteId: number; onChange: 
           {counts.map(({ sev, n }) => (
             <li key={sev} className="flex items-center gap-2">
               <span className={`size-2 rounded-[1px] ${n ? SEVERITY[sev].bar : 'bg-zinc-800'}`} />
-              <span className={n ? SEVERITY[sev].text : 'text-zinc-600'}>{SEVERITY[sev].label}</span>
+              <span className={n ? SEVERITY[sev].text : 'text-zinc-500'}>{SEVERITY[sev].label}</span>
               <span className="ml-auto tabular-nums text-zinc-400">{n}</span>
             </li>
           ))}
@@ -125,7 +125,7 @@ export function SecurityPanel({ siteId, onChange }: { siteId: number; onChange: 
             </button>
           )}
         </div>
-        <p className="text-xs leading-relaxed text-zinc-500">
+        <p className="text-xs leading-relaxed text-zinc-400">
           Auditoria passiva, 1x ao dia: lê só o que qualquer visitante acessa. Use apenas em sites que você
           administra.
         </p>
@@ -156,12 +156,12 @@ export function SecurityPanel({ siteId, onChange }: { siteId: number; onChange: 
                       <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-[1px] ${SEVERITY[f.severity].bar}`} />
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm font-medium text-zinc-100">{f.title}</span>
-                        <span className="text-[11px] text-zinc-500">
+                        <span className="text-[11px] text-zinc-400">
                           <span className={SEVERITY[f.severity].text}>{SEVERITY[f.severity].label}</span> ·{' '}
                           {SEVERITY[f.severity].hint}
                         </span>
                       </span>
-                      <span className="text-xs text-zinc-600 transition-transform group-open:rotate-90">
+                      <span className="text-xs text-zinc-500 transition-transform group-open:rotate-90">
                         ›
                       </span>
                     </summary>
@@ -189,7 +189,7 @@ export function SecurityPanel({ siteId, onChange }: { siteId: number; onChange: 
                 </span>
               ))}
             </div>
-            <p className="mt-1.5 text-xs text-zinc-500">
+            <p className="mt-1.5 text-xs text-zinc-400">
               Se aparecer um endereço que você não reconhece, o Uivo avisa.
             </p>
           </div>
